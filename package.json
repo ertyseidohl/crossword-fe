@@ -36,7 +36,9 @@
       "comma-dangle": ["error", "always-multiline"],
       "quotes": ["error", "double"],
       "semi": ["error", "never"],
-      "indent": ["error", 2]
+      "indent": ["error", 2],
+      "eqeqeq": ["error"],
+      "no-unused-vars": ["error", { "varsIgnorePattern": "^_" }]
     }
   },
   "browserslist": [

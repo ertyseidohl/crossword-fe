@@ -1,0 +1,43 @@
+class CrosswordServer {
+  constructor(url) {
+    this.url = url
+  }
+  async getCompletions(word, page) {
+    try {
+      const response = await window.fetch(
+        this.url + "/words?word=" + encodeURIComponent(word) + "&page=" + encodeURIComponent(page))
+      if (response.ok) {
+        const text = await response.text()
+        return text.split(" ")
+      } else {
+        return Promise.reject("Response not ok.")
+      }
+    } catch (error) {
+      return Promise.reject(error)
+    }
+  }
+  async attemptSolve(crossword, timeout) {
+    try {
+      let url = this.url + "/solve?crossword=" + encodeURIComponent(crossword)
+      if (timeout !== undefined) {
+        url += "&timeout=" + parseInt(timeout, 10)
+      } else {
+        timeout = 30
+      }
+      const response = await window.fetch(url)
+      if (response.ok) {
+        return await response.text()
+      } else {
+        if (await response.text() === "Timeout") {
+          return Promise.reject(`Unable to find a solution in ${timeout}s.`)
+        } else {
+          return Promise.reject("Response was not ok.")
+        }
+      }
+    } catch (error) {
+      return Promise.reject(error)
+    }
+  }
+}
+
+module.exports = CrosswordServer
