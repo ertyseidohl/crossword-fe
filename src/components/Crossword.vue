@@ -1,61 +1,68 @@
 <template>
-  <div class="editor">
+  <div class="all">
     <h1>Crossword</h1>
     <div class="errors">
       <p v-for="(e, i) in errors" v-bind:key="i">{{e}}</p>
     </div>
     <div class="info">
       <h2>
-        Name: <input v-model="name" /><br/>
-        By <input v-model="author" />
+        Name: <input v-model="name" v-on:keyup="triggerSaveTimeout()" v-on:change="triggerSaveTimeout()"/><br/>
+        By <input v-model="author" v-on:keyup="triggerSaveTimeout()" v-on:change="triggerSaveTimeout()"/>
       </h2>
       <p>
         Width:
-        <input type="number" min="2" max="20" v-model="width">
+        <input type="number" min="2" max="20" v-model="width" v-on:keyup="triggerSaveTimeout()" v-on:change="triggerSaveTimeout()">
         Height:
-        <input type="number" min="2" max="20" v-model="height">
+        <input type="number" min="2" max="20" v-model="height" v-on:keyup="triggerSaveTimeout()" v-on:change="triggerSaveTimeout()">
+        Symmetry: <select v-model="symmetry" v-on:change="triggerSaveTimeout()">
+          <option value="180" selected="selected">180&deg;</option>
+          <option value="90" selected="selected">90&deg;</option>
+          <option value="0" selected="selected">None</option>
+        </select>
         <button v-on:click="attemptSolve()">Solve</button>
         <button v-on:click="attemptSolve(100)">Long Solve</button>
       </p>
     </div>
-    <div class="crossword">
-      <table>
-        <tr v-for="y in cwh" v-bind:key="y">
-          <td v-for="x in cww" v-bind:key="x">
-            <input
-              class="cell"
-              v-bind:value="getCell(x, y)"
-              v-bind:class="{'cell--dark': isDark(x, y), 'cell--sameword': isSameWord(x, y)}"
-              v-on:keydown="handleCellKey(x, y, $event)"
-              v-on:keyup="function() {return false}"
-              v-on:focus="handleCellFocus(x, y)"
-              v-bind:id="x + ',' + y"
-              v-bind:ref="x + ',' + y"
-              maxlength="1" />
-          </td>
-        </tr>
-      </table>
-    </div>
-    <div class="wordlist">
-      <select
-        size="10"
-        ref="wordlist"
-        v-on:keydown="handleWordListKey($event)">
-        <option
-          class="word"
-          v-for="(word, i) in wordList"
-          v-bind:key="i"
-        >
-          {{word}}
-        </option>
-      </select>
-      <div v-if="wordList.length">
-      (Page {{wordListPage + 1}})
+    <div class="editor">
+      <div class="crossword">
+        <table>
+          <tr v-for="y in cwh" v-bind:key="y">
+            <td v-for="x in cww" v-bind:key="x">
+              <input
+                class="cell"
+                v-bind:value="getCell(x, y)"
+                v-bind:class="{'cell--dark': isDark(x, y), 'cell--sameword': isSameWord(x, y)}"
+                v-on:keydown="handleCellKey(x, y, $event)"
+                v-on:keyup="function() {return false}"
+                v-on:focus="handleCellFocus(x, y)"
+                v-bind:id="x + ',' + y"
+                v-bind:ref="x + ',' + y"
+                maxlength="1" />
+            </td>
+          </tr>
+        </table>
       </div>
-    </div>
-    <div class="desiredwords">
-      <textarea v-model="desiredWords">
-      </textarea>
+      <div class="wordlist">
+        <select
+          size="10"
+          ref="wordlist"
+          v-on:keydown="handleWordListKey($event)">
+          <option
+            class="word"
+            v-for="(word, i) in wordList"
+            v-bind:key="i"
+          >
+            {{word}}
+          </option>
+        </select>
+        <div v-if="wordList.length">
+        (Page {{wordListPage + 1}})
+        </div>
+      </div>
+      <div class="desiredwords">
+        <textarea v-model="desiredWords" v-on:keyup="triggerSaveTimeout()" v-on:change="triggerSaveTimeout()">
+        </textarea>
+      </div>
     </div>
   </div>
 </template>
@@ -63,8 +70,10 @@
 <script>
 import Vue from "vue"
 import CrosswordServer from "../lib/CrosswordServer"
+import Storage from "../lib/Storage"
 
 const server = new CrosswordServer("//localhost:8080")
+const storage = new Storage()
 
 const HORIZONTAL = 1
 const VERTICAL = 2
@@ -72,8 +81,13 @@ const VERTICAL = 2
 const MAX_SIZE = 21
 const MIN_SIZE = 3
 
+const STATE_STARTUP = 0
 const STATE_EDIT = 1
 const STATE_WAIT = 2
+
+const SYMMETRY_180 = "180"
+const SYMMETRY_90 = "90"
+const SYMMETRY_NONE = "0"
 
 const DARK = "#"
 
@@ -81,7 +95,7 @@ export default {
   name: "Crossword",
   data: function() {
     return {
-      state: STATE_EDIT,
+      state: STATE_STARTUP,
       moveMode: HORIZONTAL,
       currX: 0,
       currY: 0,
@@ -95,6 +109,8 @@ export default {
       wordListSelectedIndex: 0,
       wordListPage: -1,
       desiredWords: "",
+      saveTimeout: null,
+      symmetry: SYMMETRY_180,
     }
   },
   computed: {
@@ -112,10 +128,37 @@ export default {
       }
       return [...Array(h).keys()]
     },
+    disableCells: function () {
+      return this.state !== STATE_EDIT
+    },
+  },
+  created: function() {
+    if (this.state === STATE_STARTUP) {
+      this.load().then(() => {
+        this.state = STATE_EDIT
+      })
+    }
   },
   methods: {
     setCell: function (x, y, v) {
       Vue.set(this.data, x + "," + y, v)
+      this.triggerSaveTimeout()
+    },
+    setCellDark: function(x, y, dark) {
+      const char = dark ? "#" : ""
+      if (this.symmetry === SYMMETRY_180) {
+        this.setCell(x, y, char)
+        this.setCell(this.width - x - 1, this.height - y - 1, char)
+      } else if (this.symmetry === SYMMETRY_90) {
+        this.setCell(x, y, char)
+        this.setCell(this.width - x - 1, this.height - y - 1, char)
+        this.setCell(this.width - x - 1, y, char)
+        this.setCell(x, this.height - y - 1, char)
+      } else if (this.symmetry === SYMMETRY_NONE) {
+        this.setCell(x, y, char)
+      } else{
+        this.errors.push("Unknown symmetry: " + this.symmetry)
+      }
     },
     getCell: function (x, y) {
       return this.data[x + "," + y] || ""
@@ -123,23 +166,89 @@ export default {
     isDark: function (x, y) {
       return this.data[x + "," + y] === "#"
     },
+    triggerSaveTimeout: function() {
+      if (this.saveTimeout) {
+        window.clearTimeout(this.saveTimeout)
+      }
+      this.saveTimeout = window.setTimeout(this.save, 500)
+    },
+    save: function() {
+      this.state = STATE_WAIT
+      if (this.saveTimeout) {
+        this.saveTimeout = null
+      }
+      const crosswordData = {
+        crossword: this.getEntireCrossword(),
+        author: this.author,
+        name: this.name,
+        width: this.width,
+        height: this.height,
+        desiredWords: this.desiredWords,
+        symmetry: this.symmetry,
+      }
+      return storage.save(crosswordData)
+        .then(this.handleSave)
+        .catch(this.handleSaveError)
+    },
+    handleSave: function() {
+      this.state = STATE_EDIT
+    },
+    handleSaveError: function(error) {
+      this.state = STATE_EDIT
+      this.errors.push(error)
+    },
+    load: function() {
+      this.state = STATE_WAIT
+      return storage.load(this.getEntireCrossword())
+        .then(this.handleLoad)
+        .catch(this.handleLoadError)
+    },
+    handleLoad: function(crosswordData) {
+      this.state = STATE_EDIT
+      if (crosswordData) {
+        this.author = crosswordData.author
+        this.name = crosswordData.name
+        this.width = crosswordData.width
+        this.height = crosswordData.height
+        this.desiredWords = crosswordData.desiredWords
+        this.symmetry = crosswordData.symmetry
+        this.fillEntireCrossword(crosswordData.crossword)
+      } else {
+        this.errors.push("Welcome!")
+      }
+    },
+    handleLoadError: function(error){
+      this.state = STATE_EDIT
+      this.errors.push(error)
+    },
     attemptSolve: function(timeout) {
       this.state = STATE_WAIT
-      server.attemptSolve(this.getEntireCrossword(), timeout)
+      return server.attemptSolve(this.getEntireCrossword(), timeout)
         .then(this.handleSolveAttempt)
         .catch(this.handleSolveAttemptError)
     },
     handleSolveAttempt: function(result) {
       this.state = STATE_EDIT
-      const content = result.split("\n")
-      for (let y = 0; y < this.height; y++) {
-        for (let x = 0; x < this.width; x++) {
-          this.setCell(x, y, content[y][x])
-        }
+      if (!result) {
+        return
       }
+      this.fillEntireCrossword(result)
     },
     handleSolveAttemptError: function(error) {
+      this.state = STATE_EDIT
       this.errors.push(error)
+    },
+    fillEntireCrossword: function(crosswordData) {
+      const content = crosswordData.split("\n")
+      for (let y = 0; y < this.height; y++) {
+        for (let x = 0; x < this.width; x++) {
+          if (content[y][x] === ".") {
+            this.setCell(x, y, "")
+          } else {
+            this.setCell(x, y, content[y][x])
+          }
+        }
+      }
     },
     getEntireCrossword: function () {
       let rows = []
@@ -153,6 +262,9 @@ export default {
       }
       return rows.join("\n")
     },
+    getLocalWords: function() {
+      return this.desiredWords.split("\n")
+    },
     getCompletions: function(backward) {
       this.state = STATE_WAIT
       if (backward) {
@@ -160,7 +272,11 @@ export default {
       } else {
         this.wordListPage ++
       }
-      server.getCompletions(this.getCurrentWord(), this.wordListPage)
+      const currentWordRegex = new RegExp("^" + this.getCurrentWord().toUpperCase() + "$")
+      let localWords = this.getLocalWords()
+        .map(w => w.toUpperCase())
+        .filter(w => currentWordRegex.test(w))
+      server.getCompletions(this.getCurrentWord(), localWords, this.wordListPage)
         .then(this.handleCompletions)
         .catch(this.handleCompletionsError)
       this.wordListSelectedIndex = 0
@@ -214,8 +330,13 @@ export default {
         this.switchFocus("livecell")
       } else if (key === "ArrowLeft") {
         this.getCompletions(true)
+        this.wordListSelectedIndex = 0
       } else if (key === "ArrowRight") {
         this.getCompletions(false)
+        this.wordListSelectedIndex = 0
+      } else if (key === "Escape") {
+        event.preventDefault()
+        this.switchFocus("livecell")
       }
     },
     handleCellKey: function(x, y, event) {
@@ -227,13 +348,12 @@ export default {
         return
       }
       const key = event.key
-      console.log(event)
       if (key === "Backspace") {
-        if (this.getCell(x, y) === "DARK") {
+        if (this.getCell(x, y) === DARK) {
           return
         }
         if (this.getCell(x, y) === "") {
-          this.moveCursor(x, y, HORIZONTAL, -1)
+          this.moveCursor(x, y, this.moveMode, -1)
           this.setCell(this.currX, this.currY, "")
         } else{
           this.setCell(x, y, "")
@@ -257,13 +377,15 @@ export default {
         this.moveCursor(x, y, VERTICAL, 1)
       } else if (key === " ") {
         if (this.getCell(x, y) === DARK) {
-          this.setCell(x, y, "")
+          this.setCellDark(x, y, false)
         } else {
-          this.setCell(x, y, DARK)
+          this.setCellDark(x, y, true)
         }
+      }  else if (key === "Escape") {
+        this.errors = []
       } else if (/^[a-z0-9]$/i.test(key)) {
         this.setCell(x, y, key.toUpperCase())
-        this.moveCursor(x, y, HORIZONTAL, 1)
+        this.moveCursor(x, y, this.moveMode, 1)
       }
     },
     moveCursor: function(x, y, direction, distance) {
@@ -343,6 +465,12 @@ export default {
 td {
   border: 1px solid black;
   padding: 0;
+}
+
+.editor {
+  display: grid;
+  grid-template-columns: auto 200px 200px;
+  margin: 0 auto;
 }
 
 .cell {
