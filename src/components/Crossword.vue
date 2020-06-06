@@ -1,10 +1,10 @@
 <template>
   <div class="all">
-    <h1>Crossword</h1>
-    <div class="errors">
-      <p v-for="(e, i) in errors" v-bind:key="i">{{e}}</p>
+    <div class="messages">
+      <p v-for="(e, i) in messages" v-bind:key="i">{{e}}</p>
     </div>
     <div class="info">
+      <h1>Crossword</h1>
       <h2>
         Name: <input v-model="name" v-on:keyup="triggerSaveTimeout()" v-on:change="triggerSaveTimeout()"/><br/>
         By <input v-model="author" v-on:keyup="triggerSaveTimeout()" v-on:change="triggerSaveTimeout()"/>
@@ -21,15 +21,22 @@
         </select>
         <button v-on:click="attemptSolve()">Solve</button>
         <button v-on:click="attemptSolve(100)">Long Solve</button>
+        <button v-on:click="exportCrossword()">Export</button>
+        <button v-on:click="printCrossword()">Print</button>
       </p>
+    </div>
+    <div class="printinfo">
+      <h1>{{name}}</h1>
+      <p>By {{author}}</p>
     </div>
     <div class="editor">
       <div class="crossword">
-        <table>
+        <table class="crossword__table">
           <tr v-for="y in cwh" v-bind:key="y">
-            <td v-for="x in cww" v-bind:key="x">
+            <td v-for="x in cww" v-bind:key="x" class="cell">
+              <div class="cell__number" v-bind:class="{'cell__number--dirty': isClueDirty(x, y)}">{{getCellNumber(x, y)}}</div>
               <input
-                class="cell"
+                class="cell__input"
                 v-bind:value="getCellVisibleValue(x, y)"
                 v-bind:class="getCellClasses(x, y)"
                 v-on:keydown="handleCellKey(x, y, $event)"
@@ -42,8 +49,21 @@
           </tr>
         </table>
       </div>
+      <div class="clueeditor">
+        <div
+          v-for="(clue, i) in getSortedClues()"
+          v-bind:key="i"
+          >
+          <div v-if="clue">
+            {{i}}: {{clue.text}}  ({{clue.dirty ? "Dirty" : ""}})
+          </div>
+          <div v-if="!clue">
+            {{i}}:
+          </div>
+        </div>
+      </div>
       <div class="wordlist">
-        <input type="text" v-model="exploreWord" v-on:keyup="handleExploreKey($event)" />
+        <input type="text" ref="exploreword" v-model="exploreWord" v-on:keyup="handleExploreKey($event)" />
         <br />
         <select
           v-bind:size="wordList.length"
@@ -63,7 +83,11 @@
         </div>
       </div>
       <div class="desiredwords">
-        <textarea v-model="desiredWords" v-on:keyup="triggerSaveTimeout()" v-on:change="triggerSaveTimeout()">
+        <textarea
+          ref="desiredwords"
+          v-model="desiredWords"
+          v-on:keyup="triggerSaveTimeout()"
+          v-on:change="triggerSaveTimeout()">
         </textarea>
       </div>
     </div>
@@ -80,6 +104,7 @@ const storage = new Storage()
 
 const HORIZONTAL = 1
 const VERTICAL = 2
+const BOTH = 3
 
 const MAX_SIZE = 21
 const MIN_SIZE = 3
@@ -98,6 +123,30 @@ const isBlankOrDark = (char) => {
   return char === "" || char === DARK
 }
 
+class WordStart {
+  constructor(x, y, ordinal, direction) {
+    this.x = x
+    this.y = y
+    this.ordinal = ordinal
+    this.direction = direction
+  }
+}
+
+class Clue {
+  constructor(x, y, direction, word, text, isDirty) {
+    this.x = x
+    this.y = y
+    this.direction = direction
+    this.word = word
+    this.text = text
+    this.isDirty = isDirty
+  }
+
+  matches(x, y, word) {
+    return this.x === x && this.y === y && this.word === word
+  }
+}
+
 export default {
   name: "Crossword",
   data: function() {
@@ -110,7 +159,7 @@ export default {
       width: 13,
       name: "My Crossword",
       author: "Me",
-      errors: [],
+      messages: [],
       cells: {},
       ghostCells: {},
       wordList: [],
@@ -119,6 +168,8 @@ export default {
       saveTimeout: null,
       symmetry: SYMMETRY_180,
       exploreWord: "",
+      wordStarts: {},
+      clues: {},
     }
   },
   computed: {
@@ -145,46 +196,54 @@ export default {
       this.load().then(() => {
         this.state = STATE_EDIT
       })
+      window.addEventListener("keydown", this.handleWindowKey)
     }
+    this.recalculateWordStarts()
   },
   methods: {
     getCellClasses: function(x, y) {
       return {
-        "cell--current": this.currX === x && this.currY === y,
-        "cell--dark": this.isDark(x, y),
-        "cell--sameword": this.isSameWord(x, y),
-        "cell--ghost": this.isShowingGhost(x, y),
-        "cell--reflection": this.isReflectionCell(x, y)}
+        "cell__input--current": this.currX === x && this.currY === y,
+        "cell__input--dark": this.isDark(x, y),
+        "cell__input--sameword": this.isSameWord(x, y),
+        "cell__input--ghost": this.isShowingGhost(x, y),
+        "cell__input--reflection": this.isReflectionCell(x, y)}
     },
     setCell: function (x, y, v) {
+      if (this.getCell(x, y) === "#") {
+        this.setCellDark(x, y, false)
+      }
       Vue.set(this.cells, x + "," + y, v)
       this.triggerSaveTimeout()
     },
     setCellDark: function(x, y, dark) {
+      const setCellNoChecks = (x, y, v) => Vue.set(this.cells, x + "," + y, v)
       const char = dark ? "#" : ""
       if (this.symmetry === SYMMETRY_180) {
         if (!isBlankOrDark(this.getCell(this.width - x - 1, this.height - y - 1))) {
-          this.errors.push("Making this cell dark would delete a letter.")
+          this.messages.push("Making this cell dark would delete a letter.")
           return
         }
-        this.setCell(x, y, char)
-        this.setCell(this.width - x - 1, this.height - y - 1, char)
+        setCellNoChecks(x, y, char)
+        setCellNoChecks(this.width - x - 1, this.height - y - 1, char)
       } else if (this.symmetry === SYMMETRY_90) {
         if (!isBlankOrDark(this.getCell(this.width - x - 1, this.height - y - 1))
           || !isBlankOrDark(this.getCell(this.width - x - 1, y))
           || !isBlankOrDark(this.getCell(x, this.height - y - 1))) {
-          this.errors.push("Making this cell dark would delete a letter.")
+          this.messages.push("Making this cell dark would delete a letter.")
           return
         }
-        this.setCell(x, y, char)
-        this.setCell(this.width - x - 1, this.height - y - 1, char)
-        this.setCell(this.width - x - 1, y, char)
-        this.setCell(x, this.height - y - 1, char)
+        setCellNoChecks(x, y, char)
+        setCellNoChecks(this.width - x - 1, this.height - y - 1, char)
+        setCellNoChecks(this.width - x - 1, y, char)
+        setCellNoChecks(x, this.height - y - 1, char)
       } else if (this.symmetry === SYMMETRY_NONE) {
-        this.setCell(x, y, char)
+        setCellNoChecks(x, y, char)
       } else{
-        this.errors.push("Unknown symmetry: " + this.symmetry)
+        this.messages.push("Unknown symmetry: " + this.symmetry)
       }
+      this.recalculateWordStarts()
+      this.triggerSaveTimeout()
     },
     getCell: function (x, y) {
       return this.cells[x + "," + y] || ""
@@ -225,6 +284,19 @@ export default {
     clearGhosts: function() {
       this.ghostCells = {}
     },
+    getClue: function(x, y) {
+      return this.clues[x + "," + y]
+    },
+    setClue: function(x, y, dir, v) {
+      Vue.set(this.clues, x + "," + y, {
+        text: v,
+        dir: dir,
+        dirty: false,
+      })
+    },
+    markClueDirty: function(x, y) {
+      this.clues[x + "," + y].dirty = true
+    },
     triggerSaveTimeout: function() {
       if (this.saveTimeout) {
         window.clearTimeout(this.saveTimeout)
@@ -244,6 +316,7 @@ export default {
         height: this.height,
         desiredWords: this.desiredWords,
         symmetry: this.symmetry,
+        clues: this.clues,
       }
       return storage.save(crosswordData)
         .then(this.handleSave)
@@ -254,7 +327,7 @@ export default {
     },
     handleSaveError: function(error) {
       this.state = STATE_EDIT
-      this.errors.push(error)
+      this.messages.push(error)
     },
     load: function() {
       this.state = STATE_WAIT
@@ -271,14 +344,15 @@ export default {
         this.height = crosswordData.height
         this.desiredWords = crosswordData.desiredWords
         this.symmetry = crosswordData.symmetry
+        this.clues = crosswordData.clues
         this.fillEntireCrossword(crosswordData.crossword)
       } else {
-        this.errors.push("Welcome!")
+        this.messages.push("Welcome!")
       }
     },
     handleLoadError: function(error){
       this.state = STATE_EDIT
-      this.errors.push(error)
+      this.messages.push(error)
     },
     attemptSolve: function(timeout) {
       this.state = STATE_WAIT
@@ -295,7 +369,7 @@ export default {
     },
     handleSolveAttemptError: function(error) {
       this.state = STATE_EDIT
-      this.errors.push(error)
+      this.messages.push(error)
     },
     fillEntireCrossword: function(crosswordData) {
       const content = crosswordData.split("\n")
@@ -308,6 +382,7 @@ export default {
           }
         }
       }
+      this.recalculateWordStarts()
     },
     getEntireCrossword: function () {
       let rows = []
@@ -346,11 +421,11 @@ export default {
     handleCompletionsError: function(error) {
       this.state = STATE_EDIT
       this.wordList = []
-      this.errors.push(error)
+      this.messages.push(error)
     },
     fillWithWord: function(word, isGhost) {
       if (this.wordList.length === 0) {
-        this.errors.push("No word to select")
+        this.messages.push("No word to select")
       }
       let [[x, y], _, [dx, dy]] = this.getCurrentWordBounds()
       for (let char of word.split("")) {
@@ -374,6 +449,25 @@ export default {
       this.currX = x
       this.currY = y
     },
+    handleWindowKey: function(event) {
+      const key = event.key
+      if (!event.shiftKey) {
+        return
+      }
+      if (key === "!") {
+        event.preventDefault()
+        this.switchFocus("livecell")
+      } else if (key === "@") {
+        event.preventDefault()
+        this.switchFocus("clue")
+      } else if (key === "#") {
+        event.preventDefault()
+        this.switchFocus("exploreword")
+      } else if (key === "$") {
+        event.preventDefault()
+        this.switchFocus("desiredwords")
+      }
+    },
     handleWordListKey: function(event) {
       const key = event.key
       if (event.ctrlKey || event.metaKey) {
@@ -382,9 +476,6 @@ export default {
       const word = event.target.value
       if (key === "Enter" && word) {
         this.fillWithWord(word, false)
-        this.switchFocus("livecell")
-      } else if (key === "Tab") {
-        event.preventDefault()
         this.switchFocus("livecell")
       } else if (key === "ArrowLeft") {
         this.getCompletions(this.exploreWord, true)
@@ -420,7 +511,7 @@ export default {
         } else{
           this.setCell(x, y, "")
         }
-      } else if (key === "Tab") {
+      } else if (key === "/" || key === "?") {
         this.switchMoveMode()
       } else if (key === "Enter") {
         if (this.getCell(this.currX, this.currY) === DARK) {
@@ -448,11 +539,22 @@ export default {
         } else {
           this.setCellDark(x, y, true)
         }
-      }  else if (key === "Escape") {
-        this.errors = []
+      } else if (key === "Escape") {
+        this.messages = []
+      } else if (key === "Tab") {
+        this.switchFocus("clue")
       } else if (/^[a-z0-9]$/i.test(key)) {
         this.setCell(x, y, key.toUpperCase())
         this.moveCursor(x, y, this.moveMode, 1)
+      }
+    },
+    handleClueKey: function(event) {
+      const key = event.key
+      if (key === "Enter") {
+        this.switchFocus("livecell")
+      } else if (key === "Tab" && event.shiftKey) {
+        event.preventDefault()
+        this.switchFocus("livecell")
       }
     },
     moveCursor: function(x, y, direction, distance) {
@@ -534,6 +636,52 @@ export default {
       this.getCompletions(this.exploreWord, false)
       this.switchFocus("wordlist")
     },
+    recalculateWordStarts: function() {
+      this.wordStarts = {}
+      let wordNumber = 1
+      for (let y = 0; y < this.height; y++) {
+        for (let x = 0; x < this.width; x++) {
+          if (this.getCell(x, y) === DARK ) {
+            continue
+          }
+          const isHorizontal = x === 0 || this.getCell(x - 1, y) === DARK
+          const isVertical = y === 0 || this.getCell(x, y - 1) === DARK
+          if (isHorizontal && isVertical) {
+            this.wordStarts[x + "," + y] = WordStart(x, y, wordNumber, BOTH)
+          } else if (isHorizontal) {
+            this.wordStarts[x + "," + y] = WordStart(x, y, wordNumber, HORIZONTAL)
+          } else if (isVertical) {
+            this.wordStarts[x + "," + y] = WordStart(x, y, wordNumber, VERTICAL)
+          }
+          wordNumber ++
+        }
+      }
+    },
+    getCellNumber: function(x, y) {
+      return this.wordStarts[x + "," + y].wordNumber || ""
+    },
+    isClueDirty: function(x, y) {
+      const clue = this.clues[x + "," + y]
+      return !clue || clue.dirty
+    },
+    exportCrossword: function() {
+      this.save().then(() => {
+        this.messages.push(window.localStorage.getItem("crossword"))
+      })
+    },
+    printCrossword: function() {
+      print()
+    },
+    getSortedClues: function() {
+      this.sortedClues = {
+        across: [],
+        down: []
+      }
+      for (let loc in this.wordStarts) {
+        this.sortedClues.push(this.clues[loc])
+      }
+      return this.sortedClues
+    },
   },
 }
 </script>
@@ -547,38 +695,70 @@ td {
 
 .editor {
   display: grid;
-  grid-template-columns: auto 200px 200px;
+  grid-template-columns: auto 200px 200px 200px;
   margin: 0 auto;
 }
 
+.crossword__table {
+  border-collapse: collapse;
+}
+
 .cell {
+  position: relative;
+  padding: 0;
+  margin: 0;
+}
+
+.cell__number {
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  left: 1px;
+  font-size: 0.5rem;
+}
+
+.cell__number--dirty {
+  color: red;
+}
+
+.cell__input {
+  width: 100%;
+  height: 100%;
   width: 1rem;
   height: 1rem;
   text-transform: uppercase;
+  border: none;
+  text-align: center;
+  padding: 5px 3px 1px 3px;
 }
 
-.cell--sameword {
+.cell__input--sameword {
   background-color: #ccc;
 }
 
-.cell--reflection {
+.cell__input--reflection {
   background-color: #eee;
 }
 
-.cell--ghost {
+.cell__input--ghost {
   color: #fff;
 }
 
-.cell--current:focus {
+.cell__input--current:focus {
   background-color: cornflowerblue;
 }
 
-.cell--current {
+.cell__input--current {
   background-color: #aaccff;
 }
 
-.cell--dark, .cell--dark:focus {
+.cell__input--dark {
   background-color: black;
+}
+
+.cell__input--dark:focus {
+  background-color: #22a;
+  color: #22a;
 }
 
 .word {
@@ -589,5 +769,37 @@ td {
   background-color: black;
   color: white;
   font-weight: bold;
+}
+
+.printinfo {
+  display: none;
+}
+
+@media print {
+  .cell__input, .cell__input:focus {
+    background-color: white;
+  }
+  .cell__input--dark {
+    background-color: black;
+  }
+  .messages {
+    display: none;
+  }
+  .info {
+    display: none;
+  }
+  .printinfo {
+    display: block;
+  }
+  .wordlist {
+    display: none;
+  }
+  .desiredwords {
+    display: none;
+  }
+  .editor {
+    display: block;
+    float: left;
+  }
 }
 </style>
