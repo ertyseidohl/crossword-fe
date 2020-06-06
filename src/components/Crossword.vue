@@ -34,7 +34,7 @@
         <table class="crossword__table">
           <tr v-for="y in cwh" v-bind:key="y">
             <td v-for="x in cww" v-bind:key="x" class="cell">
-              <div class="cell__number" v-bind:class="{'cell__number--dirty': isClueDirty(x, y)}">{{getCellNumber(x, y)}}</div>
+              <div class="cell__number">{{getCellNumber(x, y)}}</div>
               <input
                 class="cell__input"
                 v-bind:value="getCellVisibleValue(x, y)"
@@ -50,17 +50,7 @@
         </table>
       </div>
       <div class="clueeditor">
-        <div
-          v-for="(clue, i) in getSortedClues()"
-          v-bind:key="i"
-          >
-          <div v-if="clue">
-            {{i}}: {{clue.text}}  ({{clue.dirty ? "Dirty" : ""}})
-          </div>
-          <div v-if="!clue">
-            {{i}}:
-          </div>
-        </div>
+        <input ref="clue" type="text"/>
       </div>
       <div class="wordlist">
         <input type="text" ref="exploreword" v-model="exploreWord" v-on:keyup="handleExploreKey($event)" />
@@ -132,21 +122,6 @@ class WordStart {
   }
 }
 
-class Clue {
-  constructor(x, y, direction, word, text, isDirty) {
-    this.x = x
-    this.y = y
-    this.direction = direction
-    this.word = word
-    this.text = text
-    this.isDirty = isDirty
-  }
-
-  matches(x, y, word) {
-    return this.x === x && this.y === y && this.word === word
-  }
-}
-
 export default {
   name: "Crossword",
   data: function() {
@@ -169,7 +144,6 @@ export default {
       symmetry: SYMMETRY_180,
       exploreWord: "",
       wordStarts: {},
-      clues: {},
     }
   },
   computed: {
@@ -284,19 +258,6 @@ export default {
     clearGhosts: function() {
       this.ghostCells = {}
     },
-    getClue: function(x, y) {
-      return this.clues[x + "," + y]
-    },
-    setClue: function(x, y, dir, v) {
-      Vue.set(this.clues, x + "," + y, {
-        text: v,
-        dir: dir,
-        dirty: false,
-      })
-    },
-    markClueDirty: function(x, y) {
-      this.clues[x + "," + y].dirty = true
-    },
     triggerSaveTimeout: function() {
       if (this.saveTimeout) {
         window.clearTimeout(this.saveTimeout)
@@ -316,7 +277,6 @@ export default {
         height: this.height,
         desiredWords: this.desiredWords,
         symmetry: this.symmetry,
-        clues: this.clues,
       }
       return storage.save(crosswordData)
         .then(this.handleSave)
@@ -344,7 +304,6 @@ export default {
         this.height = crosswordData.height
         this.desiredWords = crosswordData.desiredWords
         this.symmetry = crosswordData.symmetry
-        this.clues = crosswordData.clues
         this.fillEntireCrossword(crosswordData.crossword)
       } else {
         this.messages.push("Welcome!")
@@ -647,22 +606,22 @@ export default {
           const isHorizontal = x === 0 || this.getCell(x - 1, y) === DARK
           const isVertical = y === 0 || this.getCell(x, y - 1) === DARK
           if (isHorizontal && isVertical) {
-            this.wordStarts[x + "," + y] = WordStart(x, y, wordNumber, BOTH)
+            this.wordStarts[x + "," + y] = new WordStart(x, y, wordNumber, BOTH)
           } else if (isHorizontal) {
-            this.wordStarts[x + "," + y] = WordStart(x, y, wordNumber, HORIZONTAL)
+            this.wordStarts[x + "," + y] = new WordStart(x, y, wordNumber, HORIZONTAL)
           } else if (isVertical) {
-            this.wordStarts[x + "," + y] = WordStart(x, y, wordNumber, VERTICAL)
+            this.wordStarts[x + "," + y] = new WordStart(x, y, wordNumber, VERTICAL)
           }
-          wordNumber ++
+
+          if (isHorizontal || isVertical) {
+            wordNumber ++
+          }
         }
       }
     },
     getCellNumber: function(x, y) {
-      return this.wordStarts[x + "," + y].wordNumber || ""
-    },
-    isClueDirty: function(x, y) {
-      const clue = this.clues[x + "," + y]
-      return !clue || clue.dirty
+      const start = this.wordStarts[x + "," + y]
+      return start ? start.ordinal : ""
     },
     exportCrossword: function() {
       this.save().then(() => {
@@ -671,16 +630,6 @@ export default {
     },
     printCrossword: function() {
       print()
-    },
-    getSortedClues: function() {
-      this.sortedClues = {
-        across: [],
-        down: []
-      }
-      for (let loc in this.wordStarts) {
-        this.sortedClues.push(this.clues[loc])
-      }
-      return this.sortedClues
     },
   },
 }
