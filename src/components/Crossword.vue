@@ -134,12 +134,24 @@ class Clue {
     this.isDirty = isDirty
   }
 
-  isSame(x, y, direction, word) {
+  static from(obj) {
+    console.log(obj)
+    return new Clue(
+      obj.x,
+      obj.y,
+      obj.ordinal,
+      obj.direction,
+      obj.word,
+      obj.text,
+      obj.isDirty,
+    )
+  }
+
+  isSame(x, y, direction) {
     return (
       this.x === x &&
       this.y === y &&
-      this.direction === direction &&
-      this.word === word
+      this.direction === direction
     )
   }
 }
@@ -307,7 +319,10 @@ export default {
         height: this.height,
         desiredWords: this.desiredWords,
         symmetry: this.symmetry,
+        currentClues: this.currentClues,
+        historicalClues: this.historicalClues,
       }
+      console.log("save", crosswordData)
       return storage.save(crosswordData)
         .then(this.handleSave)
         .catch(this.handleSaveError)
@@ -327,6 +342,7 @@ export default {
     },
     handleLoad: function(crosswordData) {
       this.state = STATE_EDIT
+      console.log("load", crosswordData)
       if (crosswordData) {
         this.author = crosswordData.author
         this.name = crosswordData.name
@@ -334,6 +350,8 @@ export default {
         this.height = crosswordData.height
         this.desiredWords = crosswordData.desiredWords
         this.symmetry = crosswordData.symmetry
+        this.currentClues = crosswordData.currentClues.map(c => Clue.from(c))
+        this.historicalClues = this.rehydrateHistoricalClues(crosswordData.historicalClues)
         this.fillEntireCrossword(crosswordData.crossword)
       } else {
         this.messages.push("Welcome!")
@@ -342,6 +360,13 @@ export default {
     handleLoadError: function(error){
       this.state = STATE_EDIT
       this.messages.push(error)
+    },
+    rehydrateHistoricalClues: function(objects) {
+      const historicalClues = {}
+      for(let loc in objects) {
+        historicalClues[loc] = objects[loc].map(c => Clue.from(c))
+      }
+      return historicalClues
     },
     attemptSolve: function(timeout) {
       this.state = STATE_WAIT
@@ -642,6 +667,7 @@ export default {
             const existingClue = this.findExistingClue(x, y, HORIZONTAL, horizontalWord)
             if (existingClue) {
               existingClue.ordinal = cellNumber
+              existingClue.isDirty = existingClue.word === horizontalWord
               this.currentClues.push(existingClue)
             } else {
               const clue = new Clue(x, y, cellNumber, HORIZONTAL, horizontalWord, "", true)
@@ -654,6 +680,7 @@ export default {
             const existingClue = this.findExistingClue(x, y, VERTICAL, verticalWord)
             if (existingClue) {
               existingClue.ordinal = cellNumber
+              existingClue.isDirty = existingClue.word === verticalWord
               this.currentClues.push(existingClue)
             } else {
               const clue = new Clue(x, y, cellNumber, VERTICAL, verticalWord, "", true)
@@ -675,12 +702,12 @@ export default {
       }
       this.historicalClues[key].push(clue)
     },
-    findExistingClue: function(x, y, direction, word){
+    findExistingClue: function(x, y, direction){
       const key = x + "," + y + "," + direction
       if (!this.historicalClues[key]) {
         return null
       }
-      return this.historicalClues[key].find(c => c.isSame(x, y, direction, word))
+      return this.historicalClues[key].find(c => c.isSame(x, y, direction))
     },
     getCellNumber: function(x, y) {
       return this.cellNumbers[x + "," + y] || ""
