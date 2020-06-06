@@ -50,7 +50,18 @@
         </table>
       </div>
       <div class="clueeditor">
-        <input ref="clue" type="text"/>
+        <div v-for="(clues, dir) in sortedClues" v-bind:key="dir" class="clueeditor__type">
+          {{dir}}
+          <div v-for="(clue, i) in clues" v-bind:key="i" class="clue">
+            {{clue.ordinal}}
+            <input
+              class="clue__input"
+              ref="clue"
+              type="text"
+              v-model="clue.text"
+            />
+          </div>
+        </div>
       </div>
       <div class="wordlist">
         <input type="text" ref="exploreword" v-model="exploreWord" v-on:keyup="handleExploreKey($event)" />
@@ -94,7 +105,6 @@ const storage = new Storage()
 
 const HORIZONTAL = 1
 const VERTICAL = 2
-const BOTH = 3
 
 const MAX_SIZE = 21
 const MIN_SIZE = 3
@@ -113,12 +123,24 @@ const isBlankOrDark = (char) => {
   return char === "" || char === DARK
 }
 
-class WordStart {
-  constructor(x, y, ordinal, direction) {
+class Clue {
+  constructor(x, y, ordinal, direction, word, text, isDirty) {
     this.x = x
     this.y = y
     this.ordinal = ordinal
     this.direction = direction
+    this.word = word
+    this.text = text
+    this.isDirty = isDirty
+  }
+
+  isSame(x, y, direction, word) {
+    return (
+      this.x === x &&
+      this.y === y &&
+      this.direction === direction &&
+      this.word === word
+    )
   }
 }
 
@@ -143,7 +165,9 @@ export default {
       saveTimeout: null,
       symmetry: SYMMETRY_180,
       exploreWord: "",
-      wordStarts: {},
+      cellNumbers: {},
+      currentClues: [],
+      historicalClues: [],
     }
   },
   computed: {
@@ -164,15 +188,21 @@ export default {
     disableCells: function () {
       return this.state !== STATE_EDIT
     },
+    sortedClues: function () {
+      return {
+        "ACROSS": this.currentClues.filter(c => c.direction === HORIZONTAL),
+        "DOWN": this.currentClues.filter(c => c.direction === VERTICAL),
+      }
+    },
   },
   created: function() {
     if (this.state === STATE_STARTUP) {
       this.load().then(() => {
+        this.recalculate()
         this.state = STATE_EDIT
       })
       window.addEventListener("keydown", this.handleWindowKey)
     }
-    this.recalculateWordStarts()
   },
   methods: {
     getCellClasses: function(x, y) {
@@ -216,7 +246,7 @@ export default {
       } else{
         this.messages.push("Unknown symmetry: " + this.symmetry)
       }
-      this.recalculateWordStarts()
+      this.recalculate()
       this.triggerSaveTimeout()
     },
     getCell: function (x, y) {
@@ -341,7 +371,7 @@ export default {
           }
         }
       }
-      this.recalculateWordStarts()
+      this.recalculate()
     },
     getEntireCrossword: function () {
       let rows = []
@@ -386,7 +416,7 @@ export default {
       if (this.wordList.length === 0) {
         this.messages.push("No word to select")
       }
-      let [[x, y], _, [dx, dy]] = this.getCurrentWordBounds()
+      let [[x, y], _, [dx, dy]] = this.getWordBounds(this.currX, this.currY)
       for (let char of word.split("")) {
         if (isGhost) {
           this.setGhost(x, y, char)
@@ -477,8 +507,8 @@ export default {
           return
         }
         this.wordListPage = -1
-        this.exploreWord = this.getCurrentWord()
-        this.getCompletions(this.getCurrentWord(), false).then(() => {
+        this.exploreWord = this.getWordAt(this.currX, this.currY, this.moveMode)
+        this.getCompletions(this.exploreWord, false).then(() => {
           this.switchFocus("wordlist")
           if (this.wordList.length) {
             this.fillWithWord(this.wordList[0], true)
@@ -549,13 +579,13 @@ export default {
     isValidCell: function(x, y) {
       return x >= 0 && x < this.width && y >= 0 && y < this.width
     },
-    getCurrentWordBounds: function() {
-      let startX = this.currX
-      let startY = this.currY
-      let endX = this.currX
-      let endY = this.currY
-      const dx = this.moveMode === HORIZONTAL ? 1 : 0
-      const dy = this.moveMode === VERTICAL ? 1 : 0
+    getWordBounds: function(x, y, direction) {
+      let startX = x
+      let startY = y
+      let endX = x
+      let endY = y
+      const dx = direction === HORIZONTAL ? 1 : 0
+      const dy = direction === VERTICAL ? 1 : 0
       while(this.getCell(startX - dx, startY - dy) !== DARK
         && this.isValidCell(startX - dx, startY - dy)) {
         startX -= dx
@@ -568,19 +598,19 @@ export default {
       }
       return [[startX, startY], [endX, endY], [dx, dy]]
     },
-    getCurrentWord: function() {
-      const [[startX, startY], [endX, endY], [dx, dy]] = this.getCurrentWordBounds()
-      let x = startX
-      let y = startY
+    getWordAt: function(x, y, direction) {
+      const [[startX, startY], [endX, endY], [dx, dy]] = this.getWordBounds(x, y, direction)
+      let currX = startX
+      let currY = startY
       const letters = []
-      while (x !== endX || y !== endY) {
-        const letter = this.getCell(x, y)
+      while (currX !== endX || currY !== endY) {
+        const letter = this.getCell(currX, currY)
         letters.push(letter === "" ? "." : letter)
-        x += dx
-        y += dy
+        currX += dx
+        currY += dy
       }
       // Grab the last one
-      const letter = this.getCell(x, y)
+      const letter = this.getCell(currX, currY)
       letters.push(letter === "" ? "." : letter)
       return letters.join("")
     },
@@ -595,33 +625,65 @@ export default {
       this.getCompletions(this.exploreWord, false)
       this.switchFocus("wordlist")
     },
-    recalculateWordStarts: function() {
-      this.wordStarts = {}
-      let wordNumber = 1
+    recalculate: function() {
+      this.currentClues = []
+      this.cellNumbers = {}
+      let cellNumber = 1
+      console.log("------")
       for (let y = 0; y < this.height; y++) {
         for (let x = 0; x < this.width; x++) {
-          if (this.getCell(x, y) === DARK ) {
+          if (this.getCell(x, y) === DARK) {
             continue
           }
           const isHorizontal = x === 0 || this.getCell(x - 1, y) === DARK
           const isVertical = y === 0 || this.getCell(x, y - 1) === DARK
-          if (isHorizontal && isVertical) {
-            this.wordStarts[x + "," + y] = new WordStart(x, y, wordNumber, BOTH)
-          } else if (isHorizontal) {
-            this.wordStarts[x + "," + y] = new WordStart(x, y, wordNumber, HORIZONTAL)
-          } else if (isVertical) {
-            this.wordStarts[x + "," + y] = new WordStart(x, y, wordNumber, VERTICAL)
+          if (isHorizontal) {
+            const horizontalWord = this.getWordAt(x, y, HORIZONTAL)
+            const existingClue = this.findExistingClue(x, y, HORIZONTAL, horizontalWord)
+            if (existingClue) {
+              existingClue.ordinal = cellNumber
+              this.currentClues.push(existingClue)
+            } else {
+              const clue = new Clue(x, y, cellNumber, HORIZONTAL, horizontalWord, "", true)
+              this.currentClues.push(clue)
+              this.addHistoricalClue(clue)
+            }
           }
-
+          if (isVertical) {
+            const verticalWord = this.getWordAt(x, y, VERTICAL)
+            const existingClue = this.findExistingClue(x, y, VERTICAL, verticalWord)
+            if (existingClue) {
+              existingClue.ordinal = cellNumber
+              this.currentClues.push(existingClue)
+            } else {
+              const clue = new Clue(x, y, cellNumber, VERTICAL, verticalWord, "", true)
+              this.currentClues.push(clue)
+              this.addHistoricalClue(clue)
+            }
+          }
           if (isHorizontal || isVertical) {
-            wordNumber ++
+            this.cellNumbers[x + "," + y] = cellNumber
+            cellNumber ++
           }
         }
       }
     },
+    addHistoricalClue: function(clue) {
+      const key = clue.x + "," + clue.y + "," + clue.direction
+      if (!this.historicalClues[key]) {
+        this.historicalClues[key] = []
+      }
+      this.historicalClues[key].push(clue)
+    },
+    findExistingClue: function(x, y, direction, word){
+      const key = x + "," + y + "," + direction
+      if (!this.historicalClues[key]) {
+        return null
+      }
+      return this.historicalClues[key].find(c => c.isSame(x, y, direction, word))
+    },
     getCellNumber: function(x, y) {
-      const start = this.wordStarts[x + "," + y]
-      return start ? start.ordinal : ""
+      return this.cellNumbers[x + "," + y] || ""
     },
     exportCrossword: function() {
       this.save().then(() => {
@@ -644,7 +706,7 @@ td {
 
 .editor {
   display: grid;
-  grid-template-columns: auto 200px 200px 200px;
+  grid-template-columns: auto 400px 200px 200px;
   margin: 0 auto;
 }
 
@@ -722,6 +784,20 @@ td {
 
 .printinfo {
   display: none;
+}
+
+.clueeditor {
+  overflow-x: scroll;
+  height: 400px;
+}
+
+.clueeditor__type {
+  text-align: left;
+}
+
+.clue {
+  display: grid;
+  grid-template-columns: 2rem auto;
 }
 
 @media print {
