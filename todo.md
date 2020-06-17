@@ -1,6 +1,5 @@
 # TODO
 ## MVP
-- Print functionality
 - Clue edit functionality
 - Export
 - Better CSS

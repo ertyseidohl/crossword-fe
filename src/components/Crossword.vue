@@ -1,5 +1,10 @@
 <template>
   <div class="all">
+    <div class="overlay" v-if="showModal">
+      <div class="overlay__modal">
+        Thinking...
+      </div>
+    </div>
     <div class="messages">
       <p v-for="(e, i) in messages" v-bind:key="i">{{e}}</p>
     </div>
@@ -11,9 +16,23 @@
       </h2>
       <p>
         Width:
-        <input type="number" min="2" max="20" v-model="width" v-on:keyup="triggerSaveTimeout()" v-on:change="triggerSaveTimeout()">
+        <input
+          type="number"
+          min="3"
+          max="25"
+          v-model="width"
+          id="width"
+          v-on:keyup="handleSizeChange()"
+          v-on:change="handleSizeChange()">
         Height:
-        <input type="number" min="2" max="20" v-model="height" v-on:keyup="triggerSaveTimeout()" v-on:change="triggerSaveTimeout()">
+        <input
+          type="number"
+          min="3"
+          max="25"
+          v-model="height"
+          id="height"
+          v-on:keyup="handleSizeChange()"
+          v-on:change="handleSizeChange()">
         Symmetry: <select v-model="symmetry" v-on:change="triggerSaveTimeout()">
           <option value="180" selected="selected">180&deg;</option>
           <option value="90" selected="selected">90&deg;</option>
@@ -31,7 +50,10 @@
     </div>
     <div class="editor">
       <div class="crossword">
-        <table class="crossword__table">
+        <div v-if="wrongSize" id="wrongsize">
+          Error: Width and height must be between 3 and 25.
+        </div>
+        <table class="crossword__table" v-if="!wrongSize">
           <tr v-for="y in cwh" v-bind:key="y">
             <td v-for="x in cww" v-bind:key="x" class="cell">
               <div class="cell__number">{{getCellNumber(x, y)}}</div>
@@ -56,18 +78,33 @@
             {{clue.ordinal}}
             <input
               class="clue__input"
-              ref="clue"
+              v-bind:class="{'clue__input--dirty': clue.isDirty}"
+              v-bind:ref="clue.x + ',' + clue.y + ',' + clue.direction"
+              v-bind:id="clue.x + ',' + clue.y + ',' + clue.direction"
               type="text"
+              v-bind:data-index="i"
               v-model="clue.text"
+              v-on:focus="handleClueFocus(clue.x, clue.y, clue.direction)"
+              v-on:keydown="handleClueKey($event)"
             />
           </div>
         </div>
       </div>
+      <div class="cluedisplay">
+        <div v-for="(clues, dir) in sortedClues" v-bind:key="dir" class="cluedisplay__type">
+          <div class="cluedisplay__dir">{{dir}}</div>
+          <div v-for="(clue, i) in clues" v-bind:key="i" class="cluedisplay__clue">
+            <b>{{clue.ordinal}}</b>
+            {{clue.text}}
+          </div>
+        </div>
+      </div>
       <div class="wordlist">
-        <input type="text" ref="exploreword" v-model="exploreWord" v-on:keyup="handleExploreKey($event)" />
+        <input type="text" ref="exploreword" id="exploreword" v-model="exploreWord" v-on:keydown="handleExploreKey($event)" />
         <br />
         <select
           v-bind:size="wordList.length"
+          id="wordlist"
           ref="wordlist"
           v-on:blur="clearGhosts()"
           v-on:keydown="handleWordListKey($event)">
@@ -86,6 +123,7 @@
       <div class="desiredwords">
         <textarea
           ref="desiredwords"
+          id="desiredwords"
           v-model="desiredWords"
           v-on:keyup="triggerSaveTimeout()"
           v-on:change="triggerSaveTimeout()">
@@ -95,18 +133,203 @@
   </div>
 </template>
 
+<style scoped>
+td {
+  border: 1px solid black;
+  padding: 0;
+}
+
+.all {
+  position: relative;
+}
+
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.overlay__modal {
+  background-color: white;
+  border: 1px solid black;
+  border-radius: 3px;
+  box-shadow: 5px 5px 5px black;
+  padding: 0.5rem 1rem;
+}
+
+.editor {
+  display: grid;
+  grid-template-columns: auto 400px 200px 200px;
+  margin: 0 auto;
+}
+
+.crossword__table {
+  border-collapse: collapse;
+}
+
+.cell {
+  position: relative;
+  padding: 0;
+  margin: 0;
+}
+
+.cell__number {
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  left: 1px;
+  font-size: 0.5rem;
+}
+
+.cell__number--dirty {
+  color: red;
+}
+
+.cell__input {
+  width: 100%;
+  height: 100%;
+  width: 1rem;
+  height: 1rem;
+  text-transform: uppercase;
+  border: none;
+  text-align: center;
+  padding: 5px 3px 1px 3px;
+}
+
+.cell__input--sameword {
+  background-color: #ccc;
+}
+
+.cell__input--reflection {
+  background-color: #eee;
+}
+
+.cell__input--ghost {
+  color: #fff;
+}
+
+.cell__input--current:focus {
+  background-color: cornflowerblue;
+}
+
+.cell__input--current {
+  background-color: #aaccff;
+}
+
+.cell__input--dark {
+  background-color: black;
+}
+
+.cell__input--dark:focus {
+  background-color: #22a;
+  color: #22a;
+}
+
+.word {
+  font-family: monospace;
+}
+
+.word--selected {
+  background-color: black;
+  color: white;
+  font-weight: bold;
+}
+
+.printinfo {
+  display: none;
+}
+
+.clueeditor {
+  overflow-x: scroll;
+  height: 400px;
+}
+
+.clueeditor__type {
+  text-align: left;
+}
+
+.clue__input--dirty {
+  color: red;
+}
+
+.clue {
+  display: grid;
+  grid-template-columns: 2rem auto;
+}
+
+.cluedisplay {
+  display: none;
+  text-align: left;
+}
+
+@media print {
+  h1 {
+    margin: 0;
+  }
+  .cell__input, .cell__input:focus {
+    background-color: white;
+  }
+  .cell__input--dark {
+    background-color: black;
+  }
+  .messages {
+    display: none;
+  }
+  .info {
+    display: none;
+  }
+  .printinfo {
+    display: block;
+  }
+  .wordlist {
+    display: none;
+  }
+  .desiredwords {
+    display: none;
+  }
+  .editor {
+    display: block;
+  }
+  .crossword {
+    margin-bottom:1rem;
+  }
+  .crossword__table {
+    margin: 0px auto;
+  }
+  .clueeditor {
+    display: none;
+  }
+  .cluedisplay {
+    display: block;
+  }
+}
+</style>
+
 <script>
 import Vue from "vue"
 import CrosswordServer from "../lib/CrosswordServer"
 import Storage from "../lib/Storage"
 
-const server = new CrosswordServer("//localhost:8080")
+// `server` needs to be global and writable so that our test can override it.
+let server = new CrosswordServer("//localhost:8081")
+// Bind to window, so that webpack doesn't mangle our function name.
+window.replaceServer = function(url) {
+  server = new CrosswordServer(url)
+}
+
 const storage = new Storage()
 
 const HORIZONTAL = 1
 const VERTICAL = 2
 
-const MAX_SIZE = 21
+// If you change these, also search for other
+// instances of the numbers.
+const MAX_SIZE = 25
 const MIN_SIZE = 3
 
 const STATE_STARTUP = 0
@@ -135,7 +358,6 @@ class Clue {
   }
 
   static from(obj) {
-    console.log(obj)
     return new Clue(
       obj.x,
       obj.y,
@@ -197,6 +419,11 @@ export default {
       }
       return [...Array(h).keys()]
     },
+    wrongSize: function() {
+      const h = parseInt(this.height, 10)
+      const w = parseInt(this.height, 10)
+      return h > MIN_SIZE && h < MAX_SIZE && w > MIN_SIZE && w < MAX_SIZE
+    },
     disableCells: function () {
       return this.state !== STATE_EDIT
     },
@@ -205,6 +432,9 @@ export default {
         "ACROSS": this.currentClues.filter(c => c.direction === HORIZONTAL),
         "DOWN": this.currentClues.filter(c => c.direction === VERTICAL),
       }
+    },
+    showModal: function() {
+      return this.state === STATE_WAIT
     },
   },
   created: function() {
@@ -226,10 +456,15 @@ export default {
         "cell__input--reflection": this.isReflectionCell(x, y)}
     },
     setCell: function (x, y, v) {
-      if (this.getCell(x, y) === "#") {
+      const currentChar = this.getCell(x, y)
+      if (currentChar === v) {
+        return
+      }
+      if (currentChar === "#") {
         this.setCellDark(x, y, false)
       }
       Vue.set(this.cells, x + "," + y, v)
+      this.invalidateCluesAt(x, y)
       this.triggerSaveTimeout()
     },
     setCellDark: function(x, y, dark) {
@@ -300,6 +535,10 @@ export default {
     clearGhosts: function() {
       this.ghostCells = {}
     },
+    handleSizeChange: function() {
+      this.recalculate()
+      this.triggerSaveTimeout()
+    },
     triggerSaveTimeout: function() {
       if (this.saveTimeout) {
         window.clearTimeout(this.saveTimeout)
@@ -322,7 +561,6 @@ export default {
         currentClues: this.currentClues,
         historicalClues: this.historicalClues,
       }
-      console.log("save", crosswordData)
       return storage.save(crosswordData)
         .then(this.handleSave)
         .catch(this.handleSaveError)
@@ -342,7 +580,6 @@ export default {
     },
     handleLoad: function(crosswordData) {
       this.state = STATE_EDIT
-      console.log("load", crosswordData)
       if (crosswordData) {
         this.author = crosswordData.author
         this.name = crosswordData.name
@@ -350,8 +587,7 @@ export default {
         this.height = crosswordData.height
         this.desiredWords = crosswordData.desiredWords
         this.symmetry = crosswordData.symmetry
-        this.currentClues = crosswordData.currentClues.map(c => Clue.from(c))
-        this.historicalClues = this.rehydrateHistoricalClues(crosswordData.historicalClues)
+        this.rehydrateClues(crosswordData.currentClues, crosswordData.historicalClues)
         this.fillEntireCrossword(crosswordData.crossword)
       } else {
         this.messages.push("Welcome!")
@@ -361,12 +597,23 @@ export default {
       this.state = STATE_EDIT
       this.messages.push(error)
     },
-    rehydrateHistoricalClues: function(objects) {
-      const historicalClues = {}
-      for(let loc in objects) {
-        historicalClues[loc] = objects[loc].map(c => Clue.from(c))
+    rehydrateClues: function(jsonCurrentClues, jsonHistoricalClues) {
+      this.historicalClues = {}
+      this.currentClues = []
+      // We need to make sure that not only the values, but the
+      // actual references in historical and current clues are
+      // the same.
+      for(let loc in jsonHistoricalClues) {
+        jsonHistoricalClues[loc]
+          .map(c => Clue.from(c))
+          .map(this.addHistoricalClue.bind(this))
       }
-      return historicalClues
+      for (let jsonClue of jsonCurrentClues) {
+        // We are guaranteed that a clue in existing exists in historical
+        // ... As long as nobody has tampered with the data.
+        const clue = this.findExistingClue(jsonClue.x, jsonClue.y, jsonClue.direction)
+        this.currentClues.push(clue)
+      }
     },
     attemptSolve: function(timeout) {
       this.state = STATE_WAIT
@@ -441,7 +688,7 @@ export default {
       if (this.wordList.length === 0) {
         this.messages.push("No word to select")
       }
-      let [[x, y], _, [dx, dy]] = this.getWordBounds(this.currX, this.currY)
+      let [[x, y], _, [dx, dy]] = this.getWordBounds(this.currX, this.currY, this.moveMode)
       for (let char of word.split("")) {
         if (isGhost) {
           this.setGhost(x, y, char)
@@ -455,8 +702,15 @@ export default {
     switchFocus: function(target) {
       if (target === "livecell") {
         this.$refs[this.currX + "," + this.currY][0].focus()
+      } else if (target === "clue") {
+        const [[startX, startY], _a, _b] = this.getWordBounds(this.currX, this.currY, this.moveMode)
+        this.$refs[startX + "," + startY + "," + this.moveMode][0].focus()
       } else {
-        this.$refs[target].focus()
+        if (Array.isArray(this.$refs[target])) {
+          this.$refs[target][0].focus()
+        } else {
+          this.$refs[target].focus()
+        }
       }
     },
     handleCellFocus: function(x, y) {
@@ -566,9 +820,43 @@ export default {
       const key = event.key
       if (key === "Enter") {
         this.switchFocus("livecell")
-      } else if (key === "Tab" && event.shiftKey) {
+      } else if (key === "Tab") {
         event.preventDefault()
-        this.switchFocus("livecell")
+        if (event.shiftKey) {
+          this.switchFocus("livecell")
+        } else {
+          this.switchFocus("exploreword")
+        }
+      } else if (key === "ArrowUp") {
+        this.selectAdjacentClue(event.target.id, event.target.dataset["index"], -1)
+      } else if (key === "ArrowDown") {
+        this.selectAdjacentClue(event.target.id, event.target.dataset["index"], 1)
+      }
+    },
+    selectAdjacentClue(currentId, currentIndexStr, delta) {
+      // This is bad code and I feel bad about it thanks
+      const currentIndex = parseInt(currentIndexStr, 10)
+      const [_x, _y, directionStr] = currentId.split(",")
+      const direction = parseInt(directionStr, 10)
+      const acrossClues = this.currentClues.filter(c => c.direction === HORIZONTAL)
+      const downClues = this.currentClues.filter(c => c.direction === VERTICAL)
+      const toRef = c => c.x + "," + c.y + "," + c.direction
+      if (direction === HORIZONTAL) {
+        if (delta === -1 && currentIndex === 0) {
+          this.switchFocus(toRef(downClues[downClues.length - 1]))
+        } else if (delta === 1 && currentIndex === acrossClues.length - 1) {
+          this.switchFocus(toRef(downClues[0]))
+        } else {
+          this.switchFocus(toRef(acrossClues[currentIndex + delta]))
+        }
+      } else if (direction === VERTICAL) {
+        if (delta === -1 && currentIndex === 0) {
+          this.switchFocus(toRef(acrossClues[acrossClues.length - 1]))
+        } else if (delta === 1 && currentIndex === downClues.length - 1) {
+          this.switchFocus(toRef(acrossClues[0]))
+        } else {
+          this.switchFocus(toRef(downClues[currentIndex + delta]))
+        }
       }
     },
     moveCursor: function(x, y, direction, distance) {
@@ -642,19 +930,34 @@ export default {
     handleExploreKey: function(event) {
       const key = event.key
       if (key === "Enter") {
-        this.onExploreEnter()
+        this.wordListPage = -1
+        this.getCompletions(this.exploreWord, false)
+        this.switchFocus("wordlist")
+      } else if (key === "Tab") {
+        if (event.shiftKey) {
+          event.preventDefault()
+          this.switchFocus("clue")
+        }
       }
     },
-    onExploreEnter: function() {
-      this.wordListPage = -1
-      this.getCompletions(this.exploreWord, false)
-      this.switchFocus("wordlist")
+    createOrCopyClue: function(x, y, cellNumber, direction) {
+      const word = this.getWordAt(x, y, direction)
+      const existingClue = this.findExistingClue(x, y, direction, word)
+      if (existingClue) {
+        existingClue.ordinal = cellNumber
+        existingClue.isDirty = existingClue.word !== word
+        existingClue.word = word
+        this.currentClues.push(existingClue)
+      } else {
+        const clue = new Clue(x, y, cellNumber, direction, word, "", true)
+        this.currentClues.push(clue)
+        this.addHistoricalClue(clue)
+      }
     },
     recalculate: function() {
       this.currentClues = []
       this.cellNumbers = {}
       let cellNumber = 1
-      console.log("------")
       for (let y = 0; y < this.height; y++) {
         for (let x = 0; x < this.width; x++) {
           if (this.getCell(x, y) === DARK) {
@@ -663,30 +966,10 @@ export default {
           const isHorizontal = x === 0 || this.getCell(x - 1, y) === DARK
           const isVertical = y === 0 || this.getCell(x, y - 1) === DARK
           if (isHorizontal) {
-            const horizontalWord = this.getWordAt(x, y, HORIZONTAL)
-            const existingClue = this.findExistingClue(x, y, HORIZONTAL, horizontalWord)
-            if (existingClue) {
-              existingClue.ordinal = cellNumber
-              existingClue.isDirty = existingClue.word === horizontalWord
-              this.currentClues.push(existingClue)
-            } else {
-              const clue = new Clue(x, y, cellNumber, HORIZONTAL, horizontalWord, "", true)
-              this.currentClues.push(clue)
-              this.addHistoricalClue(clue)
-            }
+            this.createOrCopyClue(x, y, cellNumber, HORIZONTAL)
           }
           if (isVertical) {
-            const verticalWord = this.getWordAt(x, y, VERTICAL)
-            const existingClue = this.findExistingClue(x, y, VERTICAL, verticalWord)
-            if (existingClue) {
-              existingClue.ordinal = cellNumber
-              existingClue.isDirty = existingClue.word === verticalWord
-              this.currentClues.push(existingClue)
-            } else {
-              const clue = new Clue(x, y, cellNumber, VERTICAL, verticalWord, "", true)
-              this.currentClues.push(clue)
-              this.addHistoricalClue(clue)
-            }
+            this.createOrCopyClue(x, y, cellNumber, VERTICAL)
           }
           if (isHorizontal || isVertical) {
             this.cellNumbers[x + "," + y] = cellNumber
@@ -709,8 +992,25 @@ export default {
       }
       return this.historicalClues[key].find(c => c.isSame(x, y, direction))
     },
+    invalidateCluesAt: function(x, y) {
+      for (let direction of [HORIZONTAL, VERTICAL]) {
+        const [[startX, startY], _a, _b] = this.getWordBounds(x, y, direction)
+        const clue = this.findExistingClue(startX, startY, direction)
+        if (clue) {
+          clue.isDirty = true
+        }
+      }
+    },
     getCellNumber: function(x, y) {
       return this.cellNumbers[x + "," + y] || ""
+    },
+    handleClueFocus: function(x, y, direction) {
+      if(!this.isSameWord(x, y)) {
+        this.currX = x
+        this.currY = y
+      }
+      this.moveMode = direction
+      this.findExistingClue(x, y, direction).isDirty = false
     },
     exportCrossword: function() {
       this.save().then(() => {
@@ -724,134 +1024,3 @@ export default {
 }
 </script>
 
-<!-- Add "scoped" attribute to limit CSS to this component only -->
-<style scoped>
-td {
-  border: 1px solid black;
-  padding: 0;
-}
-
-.editor {
-  display: grid;
-  grid-template-columns: auto 400px 200px 200px;
-  margin: 0 auto;
-}
-
-.crossword__table {
-  border-collapse: collapse;
-}
-
-.cell {
-  position: relative;
-  padding: 0;
-  margin: 0;
-}
-
-.cell__number {
-  pointer-events: none;
-  position: absolute;
-  top: 0;
-  left: 1px;
-  font-size: 0.5rem;
-}
-
-.cell__number--dirty {
-  color: red;
-}
-
-.cell__input {
-  width: 100%;
-  height: 100%;
-  width: 1rem;
-  height: 1rem;
-  text-transform: uppercase;
-  border: none;
-  text-align: center;
-  padding: 5px 3px 1px 3px;
-}
-
-.cell__input--sameword {
-  background-color: #ccc;
-}
-
-.cell__input--reflection {
-  background-color: #eee;
-}
-
-.cell__input--ghost {
-  color: #fff;
-}
-
-.cell__input--current:focus {
-  background-color: cornflowerblue;
-}
-
-.cell__input--current {
-  background-color: #aaccff;
-}
-
-.cell__input--dark {
-  background-color: black;
-}
-
-.cell__input--dark:focus {
-  background-color: #22a;
-  color: #22a;
-}
-
-.word {
-  font-family: monospace;
-}
-
-.word--selected {
-  background-color: black;
-  color: white;
-  font-weight: bold;
-}
-
-.printinfo {
-  display: none;
-}
-
-.clueeditor {
-  overflow-x: scroll;
-  height: 400px;
-}
-
-.clueeditor__type {
-  text-align: left;
-}
-
-.clue {
-  display: grid;
-  grid-template-columns: 2rem auto;
-}
-
-@media print {
-  .cell__input, .cell__input:focus {
-    background-color: white;
-  }
-  .cell__input--dark {
-    background-color: black;
-  }
-  .messages {
-    display: none;
-  }
-  .info {
-    display: none;
-  }
-  .printinfo {
-    display: block;
-  }
-  .wordlist {
-    display: none;
-  }
-  .desiredwords {
-    display: none;
-  }
-  .editor {
-    display: block;
-    float: left;
-  }
-}
-</style>
