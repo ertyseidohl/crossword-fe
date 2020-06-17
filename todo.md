@@ -1,7 +1,5 @@
 # TODO
 ## MVP
-- Clue edit functionality
-- Export
 - Better CSS
 - Localword proper paging
 - Multiple crosswords at the same time

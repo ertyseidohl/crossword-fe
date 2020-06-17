@@ -1,8 +1,8 @@
 <template>
   <div class="all">
-    <div class="overlay" v-if="showModal">
-      <div class="overlay__modal">
-        Thinking...
+    <div class="overlay" v-if="modalText">
+      <div id="modal" class="overlay__modal">
+        {{modalText}}
       </div>
     </div>
     <div class="messages">
@@ -41,6 +41,7 @@
         <button v-on:click="attemptSolve()">Solve</button>
         <button v-on:click="attemptSolve(100)">Long Solve</button>
         <button v-on:click="exportCrossword()">Export</button>
+        <button v-on:click="importCrossword()">Import</button>
         <button v-on:click="printCrossword()">Print</button>
       </p>
     </div>
@@ -125,8 +126,7 @@
           ref="desiredwords"
           id="desiredwords"
           v-model="desiredWords"
-          v-on:keyup="triggerSaveTimeout()"
-          v-on:change="triggerSaveTimeout()">
+          v-on:keyup="handleDesiredWordsKey($event)">
         </textarea>
       </div>
     </div>
@@ -313,7 +313,7 @@ td {
 <script>
 import Vue from "vue"
 import CrosswordServer from "../lib/CrosswordServer"
-import Storage from "../lib/Storage"
+import LocalStorage from "../lib/LocalStorage"
 
 // `server` needs to be global and writable so that our test can override it.
 let server = new CrosswordServer("//localhost:8081")
@@ -322,7 +322,13 @@ window.replaceServer = function(url) {
   server = new CrosswordServer(url)
 }
 
-const storage = new Storage()
+var showSaveWarning = true
+// We need a way to disable the "unsaved data" alert for tests.
+window.disableSaveWarning = function() {
+  showSaveWarning = false
+}
+
+const storage = new LocalStorage()
 
 const HORIZONTAL = 1
 const VERTICAL = 2
@@ -335,6 +341,8 @@ const MIN_SIZE = 3
 const STATE_STARTUP = 0
 const STATE_EDIT = 1
 const STATE_WAIT = 2
+const STATE_SAVING = 3
+const STATE_LOADING = 4
 
 const SYMMETRY_180 = "180"
 const SYMMETRY_90 = "90"
@@ -422,7 +430,7 @@ export default {
     wrongSize: function() {
       const h = parseInt(this.height, 10)
       const w = parseInt(this.height, 10)
-      return h > MIN_SIZE && h < MAX_SIZE && w > MIN_SIZE && w < MAX_SIZE
+      return h < MIN_SIZE || h > MAX_SIZE || w < MIN_SIZE || w > MAX_SIZE
     },
     disableCells: function () {
       return this.state !== STATE_EDIT
@@ -433,8 +441,14 @@ export default {
         "DOWN": this.currentClues.filter(c => c.direction === VERTICAL),
       }
     },
-    showModal: function() {
-      return this.state === STATE_WAIT
+    modalText: function() {
+      switch(this.state) {
+      case STATE_STARTUP: return "Starting..."
+      case STATE_WAIT: return "Thinking..."
+      case STATE_SAVING: return "Saving..."
+      case STATE_LOADING: return "Loading..."
+      default: return undefined
+      }
     },
   },
   created: function() {
@@ -447,6 +461,12 @@ export default {
     }
   },
   methods: {
+    isBlocked: function() {
+      return this.state === STATE_WAIT ||
+        this.state === STATE_STARTUP ||
+        this.state === STATE_SAVING ||
+        this.state === STATE_LOADING
+    },
     getCellClasses: function(x, y) {
       return {
         "cell__input--current": this.currX === x && this.currY === y,
@@ -540,13 +560,23 @@ export default {
       this.triggerSaveTimeout()
     },
     triggerSaveTimeout: function() {
+      if (this.state === STATE_LOADING) {
+        // Don't save if we're in the middle of loading.
+        return
+      }
       if (this.saveTimeout) {
         window.clearTimeout(this.saveTimeout)
       }
       this.saveTimeout = window.setTimeout(this.save, 500)
+      if (showSaveWarning) {
+        window.onbeforeunload = function(event) {
+          event.preventDefault()
+          return "Your changes have not been saved."
+        }
+      }
     },
     save: function() {
-      this.state = STATE_WAIT
+      this.state = STATE_SAVING
       if (this.saveTimeout) {
         this.saveTimeout = null
       }
@@ -567,19 +597,19 @@ export default {
     },
     handleSave: function() {
       this.state = STATE_EDIT
+      window.onbeforeunload = undefined
     },
     handleSaveError: function(error) {
       this.state = STATE_EDIT
       this.messages.push(error)
     },
     load: function() {
-      this.state = STATE_WAIT
+      this.state = STATE_LOADING
       return storage.load(this.getEntireCrossword())
         .then(this.handleLoad)
         .catch(this.handleLoadError)
     },
     handleLoad: function(crosswordData) {
-      this.state = STATE_EDIT
       if (crosswordData) {
         this.author = crosswordData.author
         this.name = crosswordData.name
@@ -592,6 +622,8 @@ export default {
       } else {
         this.messages.push("Welcome!")
       }
+      // Set state last (or we'll accidentially trigger the save timeout).
+      this.state = STATE_EDIT
     },
     handleLoadError: function(error){
       this.state = STATE_EDIT
@@ -765,7 +797,7 @@ export default {
         return
       }
       event.preventDefault()
-      if (this.state === STATE_WAIT) {
+      if (this.isBlocked()) {
         return
       }
       const key = event.key
@@ -818,8 +850,15 @@ export default {
     },
     handleClueKey: function(event) {
       const key = event.key
+
+      if (event.ctrlKey || event.metaKey) {
+        return
+      }
+
       if (key === "Enter") {
         this.switchFocus("livecell")
+      } else if (key === "Shift") {
+        // Do nothing
       } else if (key === "Tab") {
         event.preventDefault()
         if (event.shiftKey) {
@@ -831,6 +870,8 @@ export default {
         this.selectAdjacentClue(event.target.id, event.target.dataset["index"], -1)
       } else if (key === "ArrowDown") {
         this.selectAdjacentClue(event.target.id, event.target.dataset["index"], 1)
+      } else {
+        this.triggerSaveTimeout()
       }
     },
     selectAdjacentClue(currentId, currentIndexStr, delta) {
@@ -1012,10 +1053,46 @@ export default {
       this.moveMode = direction
       this.findExistingClue(x, y, direction).isDirty = false
     },
+    handleDesiredWordsKey: function(event) {
+      const key = event.key
+      if (key !== "Tab") {
+        this.triggerSaveTimeout()
+      }
+    },
     exportCrossword: function() {
+      // From https://ourcodeworld.com/articles/read/189/how-to-create-a-file-and-generate-a-download-with-javascript-in-the-browser-without-a-server
       this.save().then(() => {
-        this.messages.push(window.localStorage.getItem("crossword"))
+        const content = window.localStorage.getItem("crossword")
+        const element = document.createElement("a")
+        element.setAttribute("href", "data:text/plain;charset=utf-8," + content)
+        element.setAttribute("download", `crossword-${this.name.replace(/[^a-zA-Z0-9]/, "")}.json`)
+        element.style.display = "none"
+        document.body.appendChild(element)
+        element.click()
+        document.body.removeChild(element)
       })
+    },
+    importCrossword: function() {
+      const input = document.createElement("input")
+      input.type = "file"
+      input.onchange = this.handleImportCrossword
+      input.click()
+    },
+    handleImportCrossword: function(event) {
+      const file = event.target.files[0]
+      const reader = new FileReader()
+      reader.readAsText(file)
+      reader.onload = this.handleImportComplete
+    },
+    handleImportComplete: function(event) {
+      try {
+        const result = JSON.parse(event.target.result)
+        this.handleLoad(result)
+      } catch (e) {
+        this.messages.push("Unable to load file! See error below for more detail:")
+        this.messages.push(e)
+      }
+
     },
     printCrossword: function() {
       print()
