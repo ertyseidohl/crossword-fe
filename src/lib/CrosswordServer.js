@@ -2,14 +2,17 @@ class CrosswordServer {
   constructor(url) {
     this.url = url
   }
-  async getCompletions(word, localWords, page) {
+  async getCompletions(word, page) {
     try {
       const response = await window.fetch(
         this.url + "/words?word=" + encodeURIComponent(word) + "&page=" + encodeURIComponent(page))
       if (response.ok) {
         const text = await response.text()
-        // Todo: if localWords.length > 10 put it on a different page etc.
-        return localWords.concat(text.split(" "))
+        if (text) {
+          return text.split(" ")
+        } else {
+          return []
+        }
       } else {
         return Promise.reject("Response not ok.")
       }

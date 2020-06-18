@@ -1,5 +1,5 @@
 <template>
-  <div class="all">
+  <div class="all" v-bind:class="{'all--nomenu': !showInfo}">
     <div class="overlay" v-if="modalText">
       <div id="modal" class="overlay__modal">
         {{modalText}}
@@ -8,7 +8,7 @@
     <div class="messages">
       <p v-for="(e, i) in messages" v-bind:key="i">{{e}}</p>
     </div>
-    <div class="info">
+    <div class="info" v-if="showInfo">
       <h1>Crossword</h1>
       <h2>
         Name: <input v-model="name" v-on:keyup="triggerSaveTimeout()" v-on:change="triggerSaveTimeout()"/><br/>
@@ -43,7 +43,12 @@
         <button v-on:click="exportCrossword()">Export</button>
         <button v-on:click="importCrossword()">Import</button>
         <button v-on:click="printCrossword()">Print</button>
+        |
+        <button v-on:click="showInfo = false">Hide</button>
       </p>
+    </div>
+    <div class="restore" v-if="!showInfo">
+        <button v-on:click="showInfo = true">Show Menu</button>
     </div>
     <div class="printinfo">
       <h1>{{name}}</h1>
@@ -117,8 +122,9 @@
             {{word}}
           </option>
         </select>
-        <div v-if="wordList.length">
-        (Page {{wordListPage + 1}})
+        <div v-if="wordList.length" id="wordlist__page">
+          <div>(Page {{wordListPage + 1}})</div>
+          <div v-if="wordListPage === wordListPageMax">(Last Page)</div>
         </div>
       </div>
       <div class="desiredwords">
@@ -126,7 +132,8 @@
           ref="desiredwords"
           id="desiredwords"
           v-model="desiredWords"
-          v-on:keyup="handleDesiredWordsKey($event)">
+          v-on:keyup="handleDesiredWordsKey($event)"
+          placeholder="Custom words (one per line)">
         </textarea>
       </div>
     </div>
@@ -168,7 +175,12 @@ td {
   margin: 0 auto;
 }
 
+.crossword {
+  padding: 0 1rem;
+}
+
 .crossword__table {
+  margin: 0 auto;
   border-collapse: collapse;
 }
 
@@ -247,6 +259,10 @@ td {
 .clueeditor {
   overflow-x: scroll;
   height: 400px;
+}
+
+.all--nomenu .clueeditor {
+  height: auto;
 }
 
 .clueeditor__type {
@@ -403,6 +419,10 @@ export default {
       ghostCells: {},
       wordList: [],
       wordListPage: -1,
+      wordListPageMax: undefined,
+      wordListCache: [],
+      wordListCacheWord: null,
+      wordListServerPage: -1,
       desiredWords: "",
       saveTimeout: null,
       symmetry: SYMMETRY_180,
@@ -410,6 +430,8 @@ export default {
       cellNumbers: {},
       currentClues: [],
       historicalClues: [],
+      showInfo: true,
+      waitTimeout: undefined,
     }
   },
   computed: {
@@ -444,7 +466,11 @@ export default {
     modalText: function() {
       switch(this.state) {
       case STATE_STARTUP: return "Starting..."
-      case STATE_WAIT: return "Thinking..."
+      case STATE_WAIT:
+        if (this.waitTimeout) {
+          return "Thinking for up to " + this.waitTimeout + " seconds..."
+        }
+        return "Thinking..."
       case STATE_SAVING: return "Saving..."
       case STATE_LOADING: return "Loading..."
       default: return undefined
@@ -590,6 +616,7 @@ export default {
         symmetry: this.symmetry,
         currentClues: this.currentClues,
         historicalClues: this.historicalClues,
+        showInfo: this.showInfo,
       }
       return storage.save(crosswordData)
         .then(this.handleSave)
@@ -619,6 +646,7 @@ export default {
         this.symmetry = crosswordData.symmetry
         this.rehydrateClues(crosswordData.currentClues, crosswordData.historicalClues)
         this.fillEntireCrossword(crosswordData.crossword)
+        this.showInfo = crosswordData.showInfo
       } else {
         this.messages.push("Welcome!")
       }
@@ -649,11 +677,13 @@ export default {
     },
     attemptSolve: function(timeout) {
       this.state = STATE_WAIT
+      this.waitTimeout = timeout
       return server.attemptSolve(this.getEntireCrossword(), timeout)
         .then(this.handleSolveAttempt)
         .catch(this.handleSolveAttemptError)
     },
     handleSolveAttempt: function(result) {
+      this.waitTimeout = undefined
       this.state = STATE_EDIT
       if (!result) {
         return
@@ -690,26 +720,63 @@ export default {
       return rows.join("\n")
     },
     getLocalWords: function() {
-      return this.desiredWords.split("\n")
+      return this.desiredWords.split("\n").filter(w => !!w.trim())
     },
     getCompletions: function(word, backward) {
       this.state = STATE_WAIT
+      console.log("BEFORE page: ", this.wordListPage, " max: ", this.wordListPageMax)
       if (backward) {
         this.wordListPage = Math.max(this.wordListPage - 1, 0)
+      } else if (this.wordListPageMax !== undefined && this.wordListPage >= this.wordListPageMax) {
+        this.wordListPage = this.wordListPageMax
+        console.log("CAUGHT page: ", this.wordListPage, " max: ", this.wordListPageMax)
+        return Promise.resolve().then(() => this.state = STATE_EDIT)
       } else {
         this.wordListPage ++
       }
+      console.log("AFTER page: ", this.wordListPage, " max: ", this.wordListPageMax)
       const currentWordRegex = new RegExp("^" + word.toUpperCase() + "$")
-      let localWords = this.getLocalWords()
-        .map(w => w.toUpperCase())
-        .filter(w => currentWordRegex.test(w))
-      return server.getCompletions(word.toUpperCase(), localWords, this.wordListPage)
-        .then(this.handleCompletions)
-        .catch(this.handleCompletionsError)
+      if (word !== this.wordListCacheWord) {
+        let localWords = this.getLocalWords()
+          .map(w => w.toUpperCase())
+          .filter(w => currentWordRegex.test(w))
+        this.wordListCache = localWords
+        this.wordListCacheWord = word
+      }
+      const startIndex = this.wordListPage * 10
+      const endIndex = (this.wordListPage + 1) * 10
+      if (endIndex > this.wordListCache.length) {
+        this.wordListServerPage ++
+        return server.getCompletions(word.toUpperCase(), this.wordListServerPage)
+          .then((result) => {
+            if (result.length === 0) {
+              this.wordListPage --
+              this.wordListPageMax = this.wordListPage
+              return Promise.resolve().then(() => this.state = STATE_EDIT)
+            }
+            if (result.length < 10) {
+              this.wordListPageMax = this.wordListPage
+            }
+            this.wordListCache = this.wordListCache.concat(result)
+            this.completeWordListUpdate(this.wordListCache.slice(startIndex, endIndex))
+          })
+          .catch(this.handleCompletionsError)
+      } else {
+        return Promise.resolve().then(
+          this.completeWordListUpdate(this.wordListCache.slice(startIndex, endIndex)))
+      }
     },
-    handleCompletions: function(result) {
-      this.state = STATE_EDIT
+    invalidateWordListCache: function() {
+      this.wordListPage = -1
+      this.wordListPageMax = undefined
+      this.wordListServerPage = -1
+      this.wordList = []
+      this.wordListCache = []
+      this.wordListCacheWord = null
+    },
+    completeWordListUpdate: function(result) {
       this.wordList = result
+      this.state = STATE_EDIT
     },
     handleCompletionsError: function(error) {
       this.state = STATE_EDIT
@@ -718,7 +785,7 @@ export default {
     },
     fillWithWord: function(word, isGhost) {
       if (this.wordList.length === 0) {
-        this.messages.push("No word to select")
+        return
       }
       let [[x, y], _, [dx, dy]] = this.getWordBounds(this.currX, this.currY, this.moveMode)
       for (let char of word.split("")) {
@@ -817,7 +884,7 @@ export default {
         if (this.getCell(this.currX, this.currY) === DARK) {
           return
         }
-        this.wordListPage = -1
+        this.invalidateWordListCache()
         this.exploreWord = this.getWordAt(this.currX, this.currY, this.moveMode)
         this.getCompletions(this.exploreWord, false).then(() => {
           this.switchFocus("wordlist")
@@ -971,7 +1038,7 @@ export default {
     handleExploreKey: function(event) {
       const key = event.key
       if (key === "Enter") {
-        this.wordListPage = -1
+        this.invalidateWordListCache()
         this.getCompletions(this.exploreWord, false)
         this.switchFocus("wordlist")
       } else if (key === "Tab") {
@@ -1056,6 +1123,8 @@ export default {
     handleDesiredWordsKey: function(event) {
       const key = event.key
       if (key !== "Tab") {
+        event.preventDefault()
+        this.invalidateWordListCache()
         this.triggerSaveTimeout()
       }
     },
