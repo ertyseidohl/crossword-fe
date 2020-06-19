@@ -638,15 +638,17 @@ export default {
     },
     handleLoad: function(crosswordData) {
       if (crosswordData) {
-        this.author = crosswordData.author
-        this.name = crosswordData.name
-        this.width = crosswordData.width
-        this.height = crosswordData.height
-        this.desiredWords = crosswordData.desiredWords
-        this.symmetry = crosswordData.symmetry
-        this.rehydrateClues(crosswordData.currentClues, crosswordData.historicalClues)
-        this.fillEntireCrossword(crosswordData.crossword)
-        this.showInfo = crosswordData.showInfo
+        this.author = crosswordData.author || "Me"
+        this.name = crosswordData.name || "My Crossword"
+        this.width = crosswordData.width || 13
+        this.height = crosswordData.height || 13
+        this.desiredWords = crosswordData.desiredWords || []
+        this.symmetry = crosswordData.symmetry || SYMMETRY_180
+        this.rehydrateClues(crosswordData.currentClues || [], crosswordData.historicalClues || [])
+        if (crosswordData.crossword) {
+          this.fillEntireCrossword(crosswordData.crossword)
+        }
+        this.showInfo = crosswordData.showInfo || true
       } else {
         this.messages.push("Welcome!")
       }
@@ -724,17 +726,14 @@ export default {
     },
     getCompletions: function(word, backward) {
       this.state = STATE_WAIT
-      console.log("BEFORE page: ", this.wordListPage, " max: ", this.wordListPageMax)
       if (backward) {
         this.wordListPage = Math.max(this.wordListPage - 1, 0)
       } else if (this.wordListPageMax !== undefined && this.wordListPage >= this.wordListPageMax) {
         this.wordListPage = this.wordListPageMax
-        console.log("CAUGHT page: ", this.wordListPage, " max: ", this.wordListPageMax)
         return Promise.resolve().then(() => this.state = STATE_EDIT)
       } else {
         this.wordListPage ++
       }
-      console.log("AFTER page: ", this.wordListPage, " max: ", this.wordListPageMax)
       const currentWordRegex = new RegExp("^" + word.toUpperCase() + "$")
       if (word !== this.wordListCacheWord) {
         let localWords = this.getLocalWords()
@@ -816,24 +815,25 @@ export default {
       this.currX = x
       this.currY = y
     },
-    handleWindowKey: function(event) {
-      const key = event.key
-      if (!event.shiftKey) {
-        return
-      }
-      if (key === "!") {
-        event.preventDefault()
-        this.switchFocus("livecell")
-      } else if (key === "@") {
-        event.preventDefault()
-        this.switchFocus("clue")
-      } else if (key === "#") {
-        event.preventDefault()
-        this.switchFocus("exploreword")
-      } else if (key === "$") {
-        event.preventDefault()
-        this.switchFocus("desiredwords")
-      }
+    handleWindowKey: function() {
+      // Can't do this since these are used in clues ...
+      // const key = event.key
+      // if (!event.controlKey) {
+      //   return
+      // }
+      // if (key === "!") {
+      //   event.preventDefault()
+      //   this.switchFocus("livecell")
+      // } else if (key === "@") {
+      //   event.preventDefault()
+      //   this.switchFocus("clue")
+      // } else if (key === "#") {
+      //   event.preventDefault()
+      //   this.switchFocus("exploreword")
+      // } else if (key === "$") {
+      //   event.preventDefault()
+      //   this.switchFocus("desiredwords")
+      // }
     },
     handleWordListKey: function(event) {
       const key = event.key
@@ -1160,6 +1160,7 @@ export default {
       } catch (e) {
         this.messages.push("Unable to load file! See error below for more detail:")
         this.messages.push(e)
+        throw e
       }
 
     },

@@ -1,5 +1,8 @@
 # TODO
 ## MVP
+- Clearing messages
+- Print and Print Sol'n should be different
+- Last page with 1 element (and one matching local word) seems broken
 
 ## Backlog
 - Local words can show up again in the server results
@@ -8,7 +11,7 @@
 - Arrows for click to change page
 - Add mouse support everywhere
 - Multiple crosswords at the same time
-- Clues may not turn black after changing a letter if you change the letter back
+- Need to test corner cases of turning clues red
 
 ## Long Shots
 - Long Solve via token / background job
