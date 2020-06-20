@@ -6,7 +6,13 @@
       </div>
     </div>
     <div class="messages">
-      <p v-for="(e, i) in messages" v-bind:key="i">{{e}}</p>
+      <div
+        v-for="(e, i) in messages"
+        v-bind:key="i"
+        class="message"
+        v-on:click="deleteMessage(i)">
+        <div class="message__text" v-html="e"></div>
+      </div>
     </div>
     <div class="info" v-if="showInfo">
       <h1>Crossword</h1>
@@ -42,16 +48,18 @@
         <button v-on:click="attemptSolve(100)">Long Solve</button>
         <button v-on:click="exportCrossword()">Export</button>
         <button v-on:click="importCrossword()">Import</button>
-        <button v-on:click="printCrossword()">Print</button>
+        <button v-on:click="printCrossword(false)">Print</button>
+        <button v-on:click="printCrossword(true)">Print Sol'n</button>
         |
         <button v-on:click="showInfo = false">Hide</button>
+        <button v-on:click="showHelp()">Help</button>
       </p>
     </div>
     <div class="restore" v-if="!showInfo">
         <button v-on:click="showInfo = true">Show Menu</button>
     </div>
     <div class="printinfo">
-      <h1>{{name}}</h1>
+      <h1>{{name}}<span v-if="printSolutionMode"> (Solution)</span></h1>
       <p>By {{author}}</p>
     </div>
     <div class="editor">
@@ -70,6 +78,7 @@
                 v-on:keydown="handleCellKey(x, y, $event)"
                 v-on:keyup="function() {return false}"
                 v-on:focus="handleCellFocus(x, y)"
+                v-on:dblclick="handleCellDoubleClick(x, y)"
                 v-bind:id="x + ',' + y"
                 v-bind:ref="x + ',' + y"
                 maxlength="1" />
@@ -78,8 +87,17 @@
         </table>
       </div>
       <div class="clueeditor">
+        <div v-show="dirtyClues">
+          Some clues need checking
+          <span
+            class="clueeditor__checkall"
+            v-on:click="checkAll()"
+          >
+            Check all
+          </span>
+        </div>
         <div v-for="(clues, dir) in sortedClues" v-bind:key="dir" class="clueeditor__type">
-          {{dir}}
+          <b>{{dir}}</b>
           <div v-for="(clue, i) in clues" v-bind:key="i" class="clue">
             {{clue.ordinal}}
             <input
@@ -96,9 +114,9 @@
           </div>
         </div>
       </div>
-      <div class="cluedisplay">
+      <div class="cluedisplay" v-if="!printSolutionMode">
         <div v-for="(clues, dir) in sortedClues" v-bind:key="dir" class="cluedisplay__type">
-          <div class="cluedisplay__dir">{{dir}}</div>
+          <h3 class="cluedisplay__dir">{{dir}}</h3>
           <div v-for="(clue, i) in clues" v-bind:key="i" class="cluedisplay__clue">
             <b>{{clue.ordinal}}</b>
             {{clue.text}}
@@ -123,24 +141,40 @@
           </option>
         </select>
         <div v-if="wordList.length" id="wordlist__page">
-          <div>(Page {{wordListPage + 1}})</div>
+          <div>
+            <span
+              class="wordlist__link"
+              v-on:click="getCompletions(exploreWord, true)"
+              v-bind:class="{'wordlist__link--hidden': wordListPage === 0}">Prev</span>
+            (Page {{wordListPage + 1}})
+            <span
+              class="wordlist__link"
+              v-on:click="getCompletions(exploreWord, false)"
+              v-bind:class="{'wordlist__link--hidden': wordListPage === wordListPageMax}">Next</span>
+          </div>
           <div v-if="wordListPage === wordListPageMax">(Last Page)</div>
         </div>
-      </div>
-      <div class="desiredwords">
-        <textarea
-          ref="desiredwords"
-          id="desiredwords"
-          v-model="desiredWords"
-          v-on:keyup="handleDesiredWordsKey($event)"
-          placeholder="Custom words (one per line)">
-        </textarea>
+        <div class="desiredwords">
+          <p><b>Your Words</b></p>
+          <textarea
+            ref="desiredwords"
+            id="desiredwords"
+            v-model="desiredWords"
+            v-on:keyup="handleDesiredWordsKey($event)"
+            placeholder="Enter one per line">
+          </textarea>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+
+p, td, input, button, select, textarea {
+  font-size: 18px;
+}
+
 td {
   border: 1px solid black;
   padding: 0;
@@ -161,7 +195,8 @@ td {
   align-items: center;
 }
 
-.overlay__modal {
+.overlay__modal,
+.message__text {
   background-color: white;
   border: 1px solid black;
   border-radius: 3px;
@@ -169,9 +204,27 @@ td {
   padding: 0.5rem 1rem;
 }
 
+.messages {
+  position: fixed;
+  left: 50%;
+  margin-left: -300px;
+  z-index: 10;
+}
+
+.message {
+  display: block;
+  width: 600px;
+  margin: 0 auto;
+  cursor: pointer;
+}
+
+.message__text:hover {
+  background: #ccc;
+}
+
 .editor {
   display: grid;
-  grid-template-columns: auto 400px 200px 200px;
+  grid-template-columns: auto auto 300px;
   margin: 0 auto;
 }
 
@@ -203,10 +256,8 @@ td {
 }
 
 .cell__input {
-  width: 100%;
-  height: 100%;
-  width: 1rem;
-  height: 1rem;
+  width: 1.5rem;
+  height: 1.5rem;
   text-transform: uppercase;
   border: none;
   text-align: center;
@@ -227,6 +278,8 @@ td {
 
 .cell__input--current:focus {
   background-color: cornflowerblue;
+  outline:none;
+  box-shadow: none;
 }
 
 .cell__input--current {
@@ -238,8 +291,8 @@ td {
 }
 
 .cell__input--dark:focus {
-  background-color: #22a;
-  color: #22a;
+  background-color: #46c;
+  color: #46c;
 }
 
 .word {
@@ -252,13 +305,22 @@ td {
   font-weight: bold;
 }
 
+.desiredwords {
+  margin-top: 1rem;
+}
+
+.desiredwords textarea {
+  width: 187px;
+  min-height: 300px;
+}
+
 .printinfo {
   display: none;
 }
 
 .clueeditor {
+  max-height: 600px;
   overflow-x: scroll;
-  height: 400px;
 }
 
 .all--nomenu .clueeditor {
@@ -267,6 +329,11 @@ td {
 
 .clueeditor__type {
   text-align: left;
+}
+
+.clueeditor__checkall {
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .clue__input--dirty {
@@ -283,6 +350,15 @@ td {
   text-align: left;
 }
 
+.wordlist__link {
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.wordlist__link--hidden {
+  visibility: hidden;
+}
+
 @media print {
   h1 {
     margin: 0;
@@ -292,6 +368,10 @@ td {
   }
   .cell__input--dark {
     background-color: black;
+    color: black;
+  }
+  .cell__number--dirty, .clue__input--dirty {
+    color: black;
   }
   .messages {
     display: none;
@@ -330,6 +410,7 @@ td {
 import Vue from "vue"
 import CrosswordServer from "../lib/CrosswordServer"
 import LocalStorage from "../lib/LocalStorage"
+import { safeBase64Encode, safeBase64Decode } from "../lib/Base64"
 
 // `server` needs to be global and writable so that our test can override it.
 let server = new CrosswordServer("//localhost:8081")
@@ -365,6 +446,15 @@ const SYMMETRY_90 = "90"
 const SYMMETRY_NONE = "0"
 
 const DARK = "#"
+
+const HELP_MESSAGE = `
+  <h3>Help</h3>
+  <p><b>Arrows or Click</b> to navigate grid</p>
+  <p><b>Forward Slash (/) or Double Click</b> to switch Across/Down</p>
+  <p><b>Tab/Shift+Tab</b> to select tools</p>
+  <p><b>Enter</b> to query word completion</p>
+  <p><b>ESC</b> to clear messages like this (or click here!)</p>
+`
 
 const isBlankOrDark = (char) => {
   return char === "" || char === DARK
@@ -432,6 +522,8 @@ export default {
       historicalClues: [],
       showInfo: true,
       waitTimeout: undefined,
+      printMode: false,
+      printSolutionMode: false,
     }
   },
   computed: {
@@ -476,17 +568,27 @@ export default {
       default: return undefined
       }
     },
+    dirtyClues: function(){
+      return this.currentClues.some(c => c.isDirty)
+    },
   },
   created: function() {
     if (this.state === STATE_STARTUP) {
       this.load().then(() => {
-        this.recalculate()
+        // note that load calls recalculate to place the cell numbers
+        this.$refs["0,0"][0].focus()
         this.state = STATE_EDIT
       })
       window.addEventListener("keydown", this.handleWindowKey)
     }
   },
   methods: {
+    deleteMessage: function(index) {
+      this.messages.splice(index, 1)
+    },
+    showHelp: function() {
+      this.messages.push(HELP_MESSAGE)
+    },
     isBlocked: function() {
       return this.state === STATE_WAIT ||
         this.state === STATE_STARTUP ||
@@ -576,6 +678,9 @@ export default {
       return this.getGhost(x, y) && !this.getCell(x, y)
     },
     getCellVisibleValue: function(x, y) {
+      if (this.printMode && !this.printSolutionMode) {
+        return ""
+      }
       return this.getCell(x, y) || this.getGhost(x, y)
     },
     clearGhosts: function() {
@@ -648,12 +753,27 @@ export default {
         if (crosswordData.crossword) {
           this.fillEntireCrossword(crosswordData.crossword)
         }
+        this.reDirtyDirtyClues(crosswordData.currentClues)
         this.showInfo = crosswordData.showInfo || true
       } else {
         this.messages.push("Welcome!")
+        this.recalculate()
       }
       // Set state last (or we'll accidentially trigger the save timeout).
       this.state = STATE_EDIT
+    },
+    reDirtyDirtyClues(jsonClues) {
+      // This is a hack because fillEntireCrossword calls recalculate, which marks
+      // clues as not dirty (when they should be).
+      this.currentClues.forEach(c => {
+        for (let i = 0; i < jsonClues.length; i++ ){
+          const jsonClue = jsonClues[i]
+          if (c.isSame(jsonClue.x, jsonClue.y, jsonClue.direction)) {
+            c.isDirty = jsonClue.isDirty
+            return
+          }
+        }
+      })
     },
     handleLoadError: function(error){
       this.state = STATE_EDIT
@@ -744,13 +864,13 @@ export default {
       }
       const startIndex = this.wordListPage * 10
       const endIndex = (this.wordListPage + 1) * 10
-      if (endIndex > this.wordListCache.length) {
+      if (this.wordListPageMax === undefined && endIndex > this.wordListCache.length) {
         this.wordListServerPage ++
         return server.getCompletions(word.toUpperCase(), this.wordListServerPage)
           .then((result) => {
             if (result.length === 0) {
-              this.wordListPage --
               this.wordListPageMax = this.wordListPage
+              this.wordListPage --
               return Promise.resolve().then(() => this.state = STATE_EDIT)
             }
             if (result.length < 10) {
@@ -803,6 +923,10 @@ export default {
       } else if (target === "clue") {
         const [[startX, startY], _a, _b] = this.getWordBounds(this.currX, this.currY, this.moveMode)
         this.$refs[startX + "," + startY + "," + this.moveMode][0].focus()
+      } else if (target === "wordlist") {
+        const wordListElement = this.$refs["wordlist"]
+        wordListElement.focus()
+        wordListElement.selectedIndex = 0
       } else {
         if (Array.isArray(this.$refs[target])) {
           this.$refs[target][0].focus()
@@ -812,8 +936,12 @@ export default {
       }
     },
     handleCellFocus: function(x, y) {
+      // Focus always fires before click
       this.currX = x
       this.currY = y
+    },
+    handleCellDoubleClick: function() {
+      this.moveMode = this.moveMode === VERTICAL ? HORIZONTAL : VERTICAL
     },
     handleWindowKey: function() {
       // Can't do this since these are used in clues ...
@@ -841,6 +969,7 @@ export default {
         return
       }
       const word = event.target.value
+      const wordListElement = this.$refs["wordlist"]
       if (key === "Enter" && word) {
         this.fillWithWord(word, false)
         this.switchFocus("livecell")
@@ -851,9 +980,23 @@ export default {
         this.getCompletions(this.exploreWord, false)
           .then(() => this.fillWithWord(event.target.value, true))
       } else if (key === "ArrowUp") {
-        setImmediate(() => this.fillWithWord(event.target.value, true))
+        if (wordListElement.selectedIndex === 0) {
+          event.preventDefault()
+          this.getCompletions(this.exploreWord, true)
+            .then(() => this.fillWithWord(event.target.value, true))
+            .then(() => wordListElement.selectedIndex = this.wordList.length - 1)
+        } else {
+          setImmediate(() => this.fillWithWord(event.target.value, true))
+        }
       } else if (key === "ArrowDown") {
-        setImmediate(() => this.fillWithWord(event.target.value, true))
+        if (wordListElement.selectedIndex === this.wordList.length - 1) {
+          event.preventDefault()
+          this.getCompletions(this.exploreWord, false)
+            .then(() => this.fillWithWord(event.target.value, true))
+            .then(() => wordListElement.selectedIndex = 0)
+        } else {
+          setImmediate(() => this.fillWithWord(event.target.value, true))
+        }
       } else if (key === "Escape") {
         event.preventDefault()
         this.switchFocus("livecell")
@@ -1062,6 +1205,10 @@ export default {
         this.addHistoricalClue(clue)
       }
     },
+    checkAll: function() {
+      this.currentClues.forEach(c => c.isDirty = false)
+      this.triggerSaveTimeout()
+    },
     recalculate: function() {
       this.currentClues = []
       this.cellNumbers = {}
@@ -1131,10 +1278,14 @@ export default {
     exportCrossword: function() {
       // From https://ourcodeworld.com/articles/read/189/how-to-create-a-file-and-generate-a-download-with-javascript-in-the-browser-without-a-server
       this.save().then(() => {
-        const content = window.localStorage.getItem("crossword")
+        const content = safeBase64Encode(window.localStorage.getItem("crossword"))
         const element = document.createElement("a")
+        let name = this.name.replace(/[^a-zA-Z0-9]/g, "")
+        if (!name) {
+          name = "MyPuzzle"
+        }
         element.setAttribute("href", "data:text/plain;charset=utf-8," + content)
-        element.setAttribute("download", `crossword-${this.name.replace(/[^a-zA-Z0-9]/, "")}.json`)
+        element.setAttribute("download", `${name}.crossword`)
         element.style.display = "none"
         document.body.appendChild(element)
         element.click()
@@ -1155,7 +1306,7 @@ export default {
     },
     handleImportComplete: function(event) {
       try {
-        const result = JSON.parse(event.target.result)
+        const result = JSON.parse(safeBase64Decode(event.target.result))
         this.handleLoad(result)
       } catch (e) {
         this.messages.push("Unable to load file! See error below for more detail:")
@@ -1164,8 +1315,14 @@ export default {
       }
 
     },
-    printCrossword: function() {
-      print()
+    printCrossword: function(solutionMode) {
+      this.printMode = true
+      this.printSolutionMode = solutionMode
+      window.setTimeout(() => {
+        print()
+        this.printMode = false
+        this.printSolutionMode = false
+      }, 10)
     },
   },
 }
