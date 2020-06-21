@@ -15,6 +15,4 @@ FROM nginx:stable as production
 COPY --from=build /opt/build/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 8080
-COPY "heroku_run.sh" /tmp/
-ENTRYPOINT ["/tmp/heroku_run.sh"]
 CMD /bin/sh -c "envsubst < /etc/nginx/conf.d/site.template > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"
