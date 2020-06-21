@@ -1,0 +1,7 @@
+build:
+  web:
+    release:
+       dockerfile: Dockerfile
+       target: production
+run:
+  web: nginx -g 'daemon off;'

@@ -1,9 +1,9 @@
 # TODO
 ## MVP
-- Done lol
+- Clear crossword
 
 ## Backlog
-- Done lol
+- Loading a puzzle into a puzzle with dark squares produces warning messages.
 
 ## Long Shots
 - Mobile responsive
@@ -16,3 +16,5 @@
 - "solve for n words"
 - Use preferred words for solve
 - Multiple crosswords at the same time
+- Share crosswords via the site
+- Saveable word lists
