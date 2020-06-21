@@ -1,6 +1,6 @@
 build:
-  web:
-    release:
+  docker:
+    web:
        dockerfile: Dockerfile
        target: production
 run:
