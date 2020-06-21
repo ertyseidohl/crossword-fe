@@ -17,4 +17,4 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 8080
 COPY "heroku_run.sh" /tmp/
 ENTRYPOINT ["/tmp/heroku_run.sh"]
-CMD /bin/bash -c "sed -i 's/\$PORT/'"$PORT"'/g' /etc/nginx/conf.d/default.conf" && nginx -g 'daemon off;'
+CMD /bin/sh -c "envsubst < /etc/nginx/conf.d/site.template > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"
