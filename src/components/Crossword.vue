@@ -411,9 +411,11 @@ import Vue from "vue"
 import CrosswordServer from "../lib/CrosswordServer"
 import LocalStorage from "../lib/LocalStorage"
 import { safeBase64Encode, safeBase64Decode } from "../lib/Base64"
+import { backendUrl } from "../settings"
 
 // `server` needs to be global and writable so that our test can override it.
-let server = new CrosswordServer("//localhost:8081")
+// let server = new CrosswordServer("//localhost:8081")
+let server = new CrosswordServer(backendUrl)
 // Bind to window, so that webpack doesn't mangle our function name.
 window.replaceServer = function(url) {
   server = new CrosswordServer(url)
