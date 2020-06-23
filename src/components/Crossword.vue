@@ -749,7 +749,7 @@ export default {
         this.name = crosswordData.name || "My Crossword"
         this.width = crosswordData.width || 13
         this.height = crosswordData.height || 13
-        this.desiredWords = crosswordData.desiredWords || []
+        this.desiredWords = crosswordData.desiredWords || ""
         this.symmetry = crosswordData.symmetry || SYMMETRY_180
         this.rehydrateClues(crosswordData.currentClues || [], crosswordData.historicalClues || [])
         if (crosswordData.crossword) {
@@ -844,6 +844,9 @@ export default {
       return rows.join("\n")
     },
     getLocalWords: function() {
+      if (!this.desiredWords) {
+        return []
+      }
       return this.desiredWords.split("\n").filter(w => !!w.trim())
     },
     getCompletions: function(word, backward) {
