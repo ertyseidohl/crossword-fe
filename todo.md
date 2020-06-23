@@ -1,9 +1,11 @@
 # TODO
 ## MVP
-- Clear crossword
+
+Done.
 
 ## Backlog
-- Loading a puzzle into a puzzle with dark squares produces warning messages.
+
+Done.
 
 ## Long Shots
 - Mobile responsive

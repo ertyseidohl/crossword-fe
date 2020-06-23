@@ -51,6 +51,8 @@
         <button v-on:click="printCrossword(false)">Print</button>
         <button v-on:click="printCrossword(true)">Print Sol'n</button>
         |
+        <button v-on:click="clearCrossword()">Clear</button>
+        |
         <button v-on:click="showInfo = false">Hide</button>
         <button v-on:click="showHelp()">Help</button>
       </p>
@@ -617,16 +619,18 @@ export default {
       this.invalidateCluesAt(x, y)
       this.triggerSaveTimeout()
     },
+    setCellNoChecks: function (x, y, v) {
+      Vue.set(this.cells, x + "," + y, v)
+    },
     setCellDark: function(x, y, dark) {
-      const setCellNoChecks = (x, y, v) => Vue.set(this.cells, x + "," + y, v)
       const char = dark ? "#" : ""
       if (this.symmetry === SYMMETRY_180) {
         if (!isBlankOrDark(this.getCell(this.width - x - 1, this.height - y - 1))) {
           this.messages.push("Making this cell dark would delete a letter.")
           return
         }
-        setCellNoChecks(x, y, char)
-        setCellNoChecks(this.width - x - 1, this.height - y - 1, char)
+        this.setCellNoChecks(x, y, char)
+        this.setCellNoChecks(this.width - x - 1, this.height - y - 1, char)
       } else if (this.symmetry === SYMMETRY_90) {
         if (!isBlankOrDark(this.getCell(this.width - x - 1, this.height - y - 1))
           || !isBlankOrDark(this.getCell(this.width - x - 1, y))
@@ -634,12 +638,12 @@ export default {
           this.messages.push("Making this cell dark would delete a letter.")
           return
         }
-        setCellNoChecks(x, y, char)
-        setCellNoChecks(this.width - x - 1, this.height - y - 1, char)
-        setCellNoChecks(this.width - x - 1, y, char)
-        setCellNoChecks(x, this.height - y - 1, char)
+        this.setCellNoChecks(x, y, char)
+        this.setCellNoChecks(this.width - x - 1, this.height - y - 1, char)
+        this.setCellNoChecks(this.width - x - 1, y, char)
+        this.setCellNoChecks(x, this.height - y - 1, char)
       } else if (this.symmetry === SYMMETRY_NONE) {
-        setCellNoChecks(x, y, char)
+        this.setCellNoChecks(x, y, char)
       } else{
         this.messages.push("Unknown symmetry: " + this.symmetry)
       }
@@ -755,6 +759,7 @@ export default {
         if (crosswordData.crossword) {
           this.fillEntireCrossword(crosswordData.crossword)
         }
+        // "re-dirty" the clues that are dirty (hax)
         this.reDirtyDirtyClues(crosswordData.currentClues)
         this.showInfo = crosswordData.showInfo || true
       } else {
@@ -823,9 +828,9 @@ export default {
       for (let y = 0; y < this.height; y++) {
         for (let x = 0; x < this.width; x++) {
           if (content[y][x] === ".") {
-            this.setCell(x, y, "")
+            this.setCellNoChecks(x, y, "")
           } else {
-            this.setCell(x, y, content[y][x])
+            this.setCellNoChecks(x, y, content[y][x])
           }
         }
       }
@@ -1328,6 +1333,12 @@ export default {
         this.printMode = false
         this.printSolutionMode = false
       }, 10)
+    },
+    clearCrossword: function() {
+      if (window.confirm("This will delete all of your saved data. Continue?")) {
+        window.localStorage.clear()
+        document.location.reload()
+      }
     },
   },
 }
