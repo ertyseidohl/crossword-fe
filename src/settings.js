@@ -1,3 +1,3 @@
 module.exports = {
-  backendUrl: "http://d3.erty.me:8081",
+  backendUrl: "https://crossword.erty.me",
 }
