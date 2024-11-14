@@ -297,6 +297,10 @@ td {
   color: #46c;
 }
 
+.cell__input--single-letter {
+  background-color: #ffaaaa;
+}
+
 .word {
   font-family: monospace;
 }
@@ -458,6 +462,12 @@ const HELP_MESSAGE = `
   <p><b>Tab/Shift+Tab</b> to select tools</p>
   <p><b>Enter</b> to query word completion</p>
   <p><b>ESC</b> to clear messages like this (or click here!)</p>
+  <p><b>Cell Colors:</b></p>
+  <p>White: Valid</p>
+  <p>Blue: Valid, current</p>
+  <p>Dark Grey: Valid, current word</p>
+  <p>Light Grey: Valid, reflection of current cell</p>
+  <p>Red: Valid, but is a one-letter word</p>
 `
 
 const isBlankOrDark = (char) => {
@@ -605,7 +615,8 @@ export default {
         "cell__input--dark": this.isDark(x, y),
         "cell__input--sameword": this.isSameWord(x, y),
         "cell__input--ghost": this.isShowingGhost(x, y),
-        "cell__input--reflection": this.isReflectionCell(x, y)}
+        "cell__input--reflection": this.isReflectionCell(x, y),
+        "cell__input--single-letter": this.isSingleLetter(x, y)}
     },
     setCell: function (x, y, v) {
       const currentChar = this.getCell(x, y)
@@ -673,6 +684,22 @@ export default {
           return true
         }
       }
+    },
+    getWordLength: function([[startX, startY], [endX, endY]], direction) {
+      if (direction === VERTICAL) {
+        return (endY - startY) + 1
+      }
+      return (endX - startX) + 1
+    },
+    isSingleLetter: function(x, y) {
+      if (this.isDark(x, y)) {
+        return false
+      }
+      // Probably could cache this for optimization in the future since we're recomputing
+      // a lot of the same word lengths over and over
+      const verticalLength = this.getWordLength(this.getWordBounds(x, y, VERTICAL), VERTICAL)
+      const horizontalLength = this.getWordLength(this.getWordBounds(x, y, HORIZONTAL), HORIZONTAL)
+      return verticalLength === 1 || horizontalLength === 1
     },
     setGhost: function (x, y, v) {
       Vue.set(this.ghostCells, x + "," + y, v)
@@ -821,6 +848,7 @@ export default {
     },
     handleSolveAttemptError: function(error) {
       this.state = STATE_EDIT
+      this.waitTimeout = undefined
       this.messages.push(error)
     },
     fillEntireCrossword: function(crosswordData) {
