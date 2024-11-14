@@ -5,7 +5,7 @@ class CrosswordServer {
   async getCompletions(word, page) {
     try {
       const response = await window.fetch(
-        this.url + "/words/?word=" + encodeURIComponent(word) + "&page=" + encodeURIComponent(page))
+        this.url + "/words?word=" + encodeURIComponent(word) + "&page=" + encodeURIComponent(page))
       if (response.ok) {
         const text = await response.text()
         if (text) {
@@ -22,7 +22,7 @@ class CrosswordServer {
   }
   async attemptSolve(crossword, timeout) {
     try {
-      let url = this.url + "/solve/?crossword=" + encodeURIComponent(crossword)
+      let url = this.url + "/solve?crossword=" + encodeURIComponent(crossword)
       if (timeout !== undefined) {
         url += "&timeout=" + parseInt(timeout, 10)
       } else {

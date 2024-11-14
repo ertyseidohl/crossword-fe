@@ -8,17 +8,19 @@
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
-    "core-js": "^3.6.4",
-    "vue": "^2.6.11"
+    "@babel/core": "^7.26.0",
+    "@babel/preset-env": "^7.26.0",
+    "core-js": "^3.39.0",
+    "vue": "^2.7.10"
   },
   "devDependencies": {
-    "@vue/cli-plugin-babel": "~4.3.0",
-    "@vue/cli-plugin-eslint": "~4.3.0",
+    "@vue/cli-plugin-babel": "^3.12.1",
+    "@vue/cli-plugin-eslint": "^3.12.1",
     "@vue/cli-service": "~4.3.0",
     "babel-eslint": "^10.1.0",
-    "eslint": "^6.7.2",
+    "eslint": "^6.8.0",
     "eslint-plugin-vue": "^6.2.2",
-    "vue-template-compiler": "^2.6.11"
+    "vue-template-compiler": "^2.7.16"
   },
   "eslintConfig": {
     "root": true,
@@ -33,13 +35,32 @@
       "parser": "babel-eslint"
     },
     "rules": {
-      "comma-dangle": ["error", "always-multiline"],
-      "quotes": ["error", "double"],
-      "semi": ["error", "never"],
-      "indent": ["error", 2],
-      "eqeqeq": ["error"],
+      "comma-dangle": [
+        "error",
+        "always-multiline"
+      ],
+      "quotes": [
+        "error",
+        "double"
+      ],
+      "semi": [
+        "error",
+        "never"
+      ],
+      "indent": [
+        "error",
+        2
+      ],
+      "eqeqeq": [
+        "error"
+      ],
       "no-debugger": "off",
-      "no-unused-vars": ["error", { "varsIgnorePattern": "^_" }]
+      "no-unused-vars": [
+        "error",
+        {
+          "varsIgnorePattern": "^_"
+        }
+      ]
     }
   },
   "browserslist": [

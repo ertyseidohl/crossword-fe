@@ -1151,7 +1151,7 @@ export default {
       this.moveMode = this.moveMode === HORIZONTAL ? VERTICAL : HORIZONTAL
     },
     isValidCell: function(x, y) {
-      return x >= 0 && x < this.width && y >= 0 && y < this.width
+      return x >= 0 && x < this.width && y >= 0 && y < this.height
     },
     getWordBounds: function(x, y, direction) {
       let startX = x
