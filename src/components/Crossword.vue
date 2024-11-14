@@ -996,7 +996,7 @@ export default {
             .then(() => this.fillWithWord(event.target.value, true))
             .then(() => wordListElement.selectedIndex = this.wordList.length - 1)
         } else {
-          setImmediate(() => this.fillWithWord(event.target.value, true))
+          setTimeout(() => this.fillWithWord(event.target.value, true), 0)
         }
       } else if (key === "ArrowDown") {
         if (wordListElement.selectedIndex === this.wordList.length - 1) {
@@ -1005,7 +1005,7 @@ export default {
             .then(() => this.fillWithWord(event.target.value, true))
             .then(() => wordListElement.selectedIndex = 0)
         } else {
-          setImmediate(() => this.fillWithWord(event.target.value, true))
+          setTimeout(() => this.fillWithWord(event.target.value, true), 0)
         }
       } else if (key === "Escape") {
         event.preventDefault()
