@@ -416,7 +416,8 @@ td {
 import Vue from "vue"
 import CrosswordServer from "../lib/CrosswordServer"
 import LocalStorage from "../lib/LocalStorage"
-import { safeBase64Encode, safeBase64Decode } from "../lib/Base64"
+import { safeBase64Decode } from "../lib/Base64"
+import { CrosswordParseError } from "../lib/CrosswordParseError"
 import { backendUrl } from "../settings"
 
 // `server` needs to be global and writable so that our test can override it.
@@ -739,12 +740,8 @@ export default {
         }
       }
     },
-    save: function() {
-      this.state = STATE_SAVING
-      if (this.saveTimeout) {
-        this.saveTimeout = null
-      }
-      const crosswordData = {
+    getCrosswordData: function() {
+      return {
         crossword: this.getEntireCrossword(),
         author: this.author,
         name: this.name,
@@ -756,7 +753,13 @@ export default {
         historicalClues: this.historicalClues,
         showInfo: this.showInfo,
       }
-      return storage.save(crosswordData)
+    },
+    save: function() {
+      this.state = STATE_SAVING
+      if (this.saveTimeout) {
+        this.saveTimeout = null
+      }
+      return storage.save(this.getCrosswordData())
         .then(this.handleSave)
         .catch(this.handleSaveError)
     },
@@ -1314,16 +1317,15 @@ export default {
       }
     },
     exportCrossword: function() {
-      // From https://ourcodeworld.com/articles/read/189/how-to-create-a-file-and-generate-a-download-with-javascript-in-the-browser-without-a-server
       this.save().then(() => {
-        const content = safeBase64Encode(window.localStorage.getItem("crossword"))
+        const content = JSON.stringify(this.getCrosswordData())
         const element = document.createElement("a")
-        let name = this.name.replace(/[^a-zA-Z0-9]/g, "")
+        let name = this.name.replace(/[^a-zA-Z0-9_-]/g, "")
         if (!name) {
           name = "MyPuzzle"
         }
-        element.setAttribute("href", "data:text/plain;charset=utf-8," + content)
-        element.setAttribute("download", `${name}.crossword`)
+        element.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(content))
+        element.setAttribute("download", `${name}.json`)
         element.style.display = "none"
         document.body.appendChild(element)
         element.click()
@@ -1344,14 +1346,19 @@ export default {
     },
     handleImportComplete: function(event) {
       try {
-        const result = JSON.parse(safeBase64Decode(event.target.result))
+        // First try to load as .json file
+        const result = JSON.parse(event.target.result)
         this.handleLoad(result)
-      } catch (e) {
-        this.messages.push("Unable to load file! See error below for more detail:")
-        this.messages.push(e)
-        throw e
+      } catch(e1) {
+        // Second, try to load as a .crossword file (legacy format)
+        try {
+          const result = JSON.parse(safeBase64Decode(event.target.result))
+          this.handleLoad(result)
+        } catch (e2) {
+          this.messages.push("Unable to load file! See error(s) in the console for more details.")
+          throw new CrosswordParseError(e1, e2)
+        }
       }
-
     },
     printCrossword: function(solutionMode) {
       this.printMode = true
