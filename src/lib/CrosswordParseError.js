@@ -1,4 +1,4 @@
-export default class CrosswordParseError extends Error {
+export class CrosswordParseError extends Error {
   constructor(jsonError, binaryError, ...params) {
     super(...params)
     this.jsonError = jsonError

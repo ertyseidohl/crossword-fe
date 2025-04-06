@@ -1,3 +1,7 @@
+/* eslint-disable no-undef */
 module.exports = {
-  backendUrl: "https://crossword.erty.me",
+  backendUrl:
+    process.env.NODE_ENV === "production"
+      ? "https://crossword.erty.me"
+      : "http://localhost:8081",
 }

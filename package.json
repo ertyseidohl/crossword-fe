@@ -22,47 +22,6 @@
     "eslint-plugin-vue": "^6.2.2",
     "vue-template-compiler": "^2.7.16"
   },
-  "eslintConfig": {
-    "root": true,
-    "env": {
-      "node": true
-    },
-    "extends": [
-      "plugin:vue/essential",
-      "eslint:recommended"
-    ],
-    "parserOptions": {
-      "parser": "babel-eslint"
-    },
-    "rules": {
-      "comma-dangle": [
-        "error",
-        "always-multiline"
-      ],
-      "quotes": [
-        "error",
-        "double"
-      ],
-      "semi": [
-        "error",
-        "never"
-      ],
-      "indent": [
-        "error",
-        2
-      ],
-      "eqeqeq": [
-        "error"
-      ],
-      "no-debugger": "off",
-      "no-unused-vars": [
-        "error",
-        {
-          "varsIgnorePattern": "^_"
-        }
-      ]
-    }
-  },
   "browserslist": [
     "> 1%",
     "last 2 versions",
