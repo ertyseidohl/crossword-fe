@@ -89,6 +89,18 @@
         </table>
       </div>
       <div class="clueeditor">
+        <div class="clueeditor__minwordlength">
+          <label for="minimum-word-length-for-clue">Minimum word length for clue: </label>
+          <input
+            type="number"
+            min="1"
+            v-bind:max="maxClueLength"
+            v-model="minimumWordLengthForClue"
+            v-on:change="recalculate()"
+            class="clueeditor__minwordlength__input"
+            id="minimum-word-length-for-clue"
+          />
+        </div>
         <div v-show="dirtyClues">
           Some clues need checking
           <span
@@ -119,10 +131,10 @@
       <div class="cluedisplay" v-if="!printSolutionMode">
         <div v-for="(clues, dir) in sortedClues" v-bind:key="dir" class="cluedisplay__type">
           <h3 class="cluedisplay__dir">{{dir}}</h3>
-          <div v-for="(clue, i) in clues" v-bind:key="i" class="cluedisplay__clue">
+            <div v-for="(clue, i) in clues" v-bind:key="i" class="cluedisplay__clue">
             <b>{{clue.ordinal}}</b>
             {{clue.text}}
-          </div>
+            </div>
         </div>
       </div>
       <div class="wordlist">
@@ -346,6 +358,15 @@ td {
   cursor: pointer;
 }
 
+.clueeditor__minwordlength {
+  margin: 0.5rem 0;
+}
+
+.clueeditor__minwordlength__input {
+  width: 4rem;
+  margin-right: 1rem;
+}
+
 .clue__input--dirty {
   color: red;
 }
@@ -532,6 +553,7 @@ export default {
       wordListCache: [],
       wordListCacheWord: null,
       wordListServerPage: -1,
+      wordAtCache: {},
       desiredWords: "",
       saveTimeout: null,
       symmetry: SYMMETRY_180,
@@ -543,6 +565,7 @@ export default {
       waitTimeout: undefined,
       printMode: false,
       printSolutionMode: false,
+      minimumWordLengthForClue: 1,
     }
   },
   computed: {
@@ -569,9 +592,15 @@ export default {
       return this.state !== STATE_EDIT
     },
     sortedClues: function () {
+      function getFilter(dir) {
+        return function (clue) {
+          return clue.direction === dir &&
+          clue.word.length >= this.minimumWordLengthForClue
+        }
+      }
       return {
-        "ACROSS": this.currentClues.filter(c => c.direction === HORIZONTAL),
-        "DOWN": this.currentClues.filter(c => c.direction === VERTICAL),
+        "ACROSS": this.currentClues.filter(getFilter(HORIZONTAL).bind(this)),
+        "DOWN": this.currentClues.filter(getFilter(VERTICAL).bind(this)),
       }
     },
     modalText: function() {
@@ -589,6 +618,9 @@ export default {
     },
     dirtyClues: function(){
       return this.currentClues.some(c => c.isDirty)
+    },
+    maxClueLength: function() {
+      return Math.max(...this.currentClues.map(c => c.word.length))
     },
   },
   created: function() {
@@ -1215,6 +1247,11 @@ export default {
       return [[startX, startY], [endX, endY], [dx, dy]]
     },
     getWordAt: function(x, y, direction) {
+      // Cache this, since we call this a lot.
+      // This cache should be invalidated when the crossword changes.
+      if (this.wordAtCache[x + "," + y + "," + direction]) {
+        return this.wordAtCache[x + "," + y + "," + direction]
+      }
       const [[startX, startY], [endX, endY], [dx, dy]] = this.getWordBounds(x, y, direction)
       let currX = startX
       let currY = startY
@@ -1228,6 +1265,7 @@ export default {
       // Grab the last one
       const letter = this.getCell(currX, currY)
       letters.push(letter === "" ? "." : letter)
+      this.wordAtCache[x + "," + y + "," + direction] = letters.join("")
       return letters.join("")
     },
     handleExploreKey: function(event) {
@@ -1265,13 +1303,36 @@ export default {
       this.currentClues = []
       this.cellNumbers = {}
       let cellNumber = 1
+      this.wordAtCache = {}
+      // Need to figure out the minimum word length for clues first to avoid
+      // the case where all of the words are too short and therefore no clues
+      // are generated.
+      let longestWord = -Infinity
       for (let y = 0; y < this.height; y++) {
         for (let x = 0; x < this.width; x++) {
           if (this.getCell(x, y) === DARK) {
             continue
           }
-          const isHorizontal = x === 0 || this.getCell(x - 1, y) === DARK
-          const isVertical = y === 0 || this.getCell(x, y - 1) === DARK
+          longestWord = Math.max(
+            longestWord,
+            this.getWordAt(x, y, VERTICAL).length,
+            this.getWordAt(x, y, HORIZONTAL).length)
+        }
+      }
+      if (this.minimumWordLengthForClue > longestWord) {
+        this.minimumWordLengthForClue = longestWord
+      }
+      for (let y = 0; y < this.height; y++) {
+        for (let x = 0; x < this.width; x++) {
+          if (this.getCell(x, y) === DARK) {
+            continue
+          }
+          let isHorizontal = x === 0 || this.getCell(x - 1, y) === DARK
+          let isVertical = y === 0 || this.getCell(x, y - 1) === DARK
+
+          isHorizontal &= this.getWordLength(this.getWordBounds(x, y, HORIZONTAL), HORIZONTAL) >= this.minimumWordLengthForClue
+          isVertical &= this.getWordLength(this.getWordBounds(x, y, VERTICAL), VERTICAL) >= this.minimumWordLengthForClue
+
           if (isHorizontal) {
             this.createOrCopyClue(x, y, cellNumber, HORIZONTAL)
           }
