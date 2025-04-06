@@ -266,6 +266,14 @@ td {
   padding: 5px 3px 1px 3px;
 }
 
+.cell__input--single-letter {
+  background-color: #ffaaaa;
+}
+
+.cell__input--double-letter {
+  background-color: #ffdddd;
+}
+
 .cell__input--sameword {
   background-color: #ccc;
 }
@@ -295,10 +303,6 @@ td {
 .cell__input--dark:focus {
   background-color: #46c;
   color: #46c;
-}
-
-.cell__input--single-letter {
-  background-color: #ffaaaa;
 }
 
 .word {
@@ -611,13 +615,20 @@ export default {
         this.state === STATE_LOADING
     },
     getCellClasses: function(x, y) {
-      return {
+      const classes = {
         "cell__input--current": this.currX === x && this.currY === y,
         "cell__input--dark": this.isDark(x, y),
         "cell__input--sameword": this.isSameWord(x, y),
         "cell__input--ghost": this.isShowingGhost(x, y),
         "cell__input--reflection": this.isReflectionCell(x, y),
-        "cell__input--single-letter": this.isSingleLetter(x, y)}
+      }
+      const minLetterLength = this.getMinLetterLength(x, y)
+      if (minLetterLength === 1) {
+        classes["cell__input--single-letter"] = true
+      } else if (minLetterLength === 2) {
+        classes["cell__input--double-letter"] = true
+      }
+      return classes
     },
     setCell: function (x, y, v) {
       const currentChar = this.getCell(x, y)
@@ -692,7 +703,7 @@ export default {
       }
       return (endX - startX) + 1
     },
-    isSingleLetter: function(x, y) {
+    getMinLetterLength: function(x, y) {
       if (this.isDark(x, y)) {
         return false
       }
@@ -700,7 +711,7 @@ export default {
       // a lot of the same word lengths over and over
       const verticalLength = this.getWordLength(this.getWordBounds(x, y, VERTICAL), VERTICAL)
       const horizontalLength = this.getWordLength(this.getWordBounds(x, y, HORIZONTAL), HORIZONTAL)
-      return verticalLength === 1 || horizontalLength === 1
+      return Math.min(verticalLength, horizontalLength)
     },
     setGhost: function (x, y, v) {
       Vue.set(this.ghostCells, x + "," + y, v)
