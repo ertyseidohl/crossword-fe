@@ -72,6 +72,7 @@
         <table class="crossword__table" v-if="!wrongSize">
           <tr v-for="y in cwh" v-bind:key="y">
             <td v-for="x in cww" v-bind:key="x" class="cell">
+              <div class="cell__overlay" v-if="isSpecialCell(x, y)"></div>
               <div class="cell__number">{{getCellNumber(x, y)}}</div>
               <input
                 class="cell__input"
@@ -298,6 +299,19 @@ td {
   color: #fff;
 }
 
+.cell__overlay {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  border: 1px solid black;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
 .cell__input--current:focus {
   background-color: cornflowerblue;
   outline:none;
@@ -486,6 +500,7 @@ const HELP_MESSAGE = `
   <p><b>Arrows or Click</b> to navigate grid</p>
   <p><b>Forward Slash (/) or Double Click</b> to switch Across/Down</p>
   <p><b>Tab/Shift+Tab</b> to select tools</p>
+  <p><b>.</b> (period) to toggle special cells (circle)</p>
   <p><b>Enter</b> to query word completion</p>
   <p><b>ESC</b> to clear messages like this (or click here!)</p>
   <p><b>Cell Colors:</b></p>
@@ -547,6 +562,7 @@ export default {
       messages: [],
       cells: {},
       ghostCells: {},
+      specialCells: {},
       wordList: [],
       wordListPage: -1,
       wordListPageMax: undefined,
@@ -653,6 +669,7 @@ export default {
         "cell__input--sameword": this.isSameWord(x, y),
         "cell__input--ghost": this.isShowingGhost(x, y),
         "cell__input--reflection": this.isReflectionCell(x, y),
+        "cell__input--special": this.isSpecialCell(x, y),
       }
       const minLetterLength = this.getMinLetterLength(x, y)
       if (minLetterLength === 1) {
@@ -729,6 +746,18 @@ export default {
         }
       }
     },
+    setSpecialCell: function(x, y){
+      const key = x + "," + y
+      if (this.specialCells[key]) {
+        Vue.delete(this.specialCells, key)
+      } else {
+        Vue.set(this.specialCells, key, true)
+      }
+    },
+    isSpecialCell: function(x, y) {
+      const key = x + "," + y
+      return !!this.specialCells[key]
+    },
     getWordLength: function([[startX, startY], [endX, endY]], direction) {
       if (direction === VERTICAL) {
         return (endY - startY) + 1
@@ -795,6 +824,7 @@ export default {
         currentClues: this.currentClues,
         historicalClues: this.historicalClues,
         showInfo: this.showInfo,
+        specialCells: this.specialCells,
       }
     },
     save: function() {
@@ -832,6 +862,7 @@ export default {
         if (crosswordData.crossword) {
           this.fillEntireCrossword(crosswordData.crossword)
         }
+        this.specialCells = crosswordData.specialCells || {}
         // "re-dirty" the clues that are dirty (hax)
         this.reDirtyDirtyClues(crosswordData.currentClues)
         this.showInfo = crosswordData.showInfo || true
@@ -1137,6 +1168,8 @@ export default {
         this.messages = []
       } else if (key === "Tab") {
         this.switchFocus("clue")
+      } else if (key === ".") {
+        this.setSpecialCell(x, y)
       } else if (/^[a-z0-9]$/i.test(key)) {
         this.setCell(x, y, key.toUpperCase())
         this.moveCursor(x, y, this.moveMode, 1)
