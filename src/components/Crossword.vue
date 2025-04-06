@@ -522,14 +522,6 @@ class Clue {
       obj.isDirty,
     )
   }
-
-  isSame(x, y, direction) {
-    return (
-      this.x === x &&
-      this.y === y &&
-      this.direction === direction
-    )
-  }
 }
 
 export default {
@@ -1327,6 +1319,7 @@ export default {
           if (this.getCell(x, y) === DARK) {
             continue
           }
+
           let isHorizontal = x === 0 || this.getCell(x - 1, y) === DARK
           let isVertical = y === 0 || this.getCell(x, y - 1) === DARK
 
@@ -1358,7 +1351,10 @@ export default {
       if (!this.historicalClues[key]) {
         return null
       }
-      return this.historicalClues[key].find(c => c.isSame(x, y, direction))
+      return this.historicalClues[key].find((c) =>
+        c.x === x &&
+        c.y === y &&
+        c.direction === direction)
     },
     invalidateCluesAt: function(x, y) {
       for (let direction of [HORIZONTAL, VERTICAL]) {
