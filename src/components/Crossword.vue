@@ -1333,6 +1333,9 @@ export default {
       this.triggerSaveTimeout()
     },
     recalculate: function() {
+      if (this.width < MIN_SIZE || this.height < MIN_SIZE) {
+        return
+      }
       this.currentClues = []
       this.cellNumbers = {}
       let cellNumber = 1
