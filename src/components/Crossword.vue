@@ -1279,10 +1279,14 @@ export default {
       }
       return [[startX, startY], [endX, endY], [dx, dy]]
     },
+    invalidateWordAtCache() {
+      this.wordAtCache = {}
+    },
     getWordAt: function(x, y, direction) {
       // Cache this, since we call this a lot.
       // This cache should be invalidated when the crossword changes.
       if (this.wordAtCache[x + "," + y + "," + direction]) {
+        console.log("Cache hit for " + x + "," + y + "," + direction + ": " + this.wordAtCache[x + "," + y + "," + direction])
         return this.wordAtCache[x + "," + y + "," + direction]
       }
       const [[startX, startY], [endX, endY], [dx, dy]] = this.getWordBounds(x, y, direction)
@@ -1339,7 +1343,7 @@ export default {
       this.currentClues = []
       this.cellNumbers = {}
       let cellNumber = 1
-      this.wordAtCache = {}
+      this.invalidateWordAtCache()
       // Need to figure out the minimum word length for clues first to avoid
       // the case where all of the words are too short and therefore no clues
       // are generated.
