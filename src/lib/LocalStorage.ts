@@ -1,7 +1,7 @@
 const CROSSWORD_KEY = "crossword"
 
-class LocalStorage {
-  save(crosswordData) {
+export default class LocalStorage {
+  save(crosswordData: any) {
     window.localStorage.setItem(CROSSWORD_KEY, JSON.stringify(crosswordData))
     return new Promise(res => setTimeout(res, 0))
   }
@@ -14,5 +14,3 @@ class LocalStorage {
     }
   }
 }
-
-module.exports = LocalStorage

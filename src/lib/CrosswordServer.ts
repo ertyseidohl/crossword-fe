@@ -1,8 +1,6 @@
-class CrosswordServer {
-  constructor(url) {
-    this.url = url
-  }
-  async getCompletions(word, page) {
+export default class CrosswordServer {
+  constructor(private url: string){}
+  async getCompletions(word: string, page: number) {
     try {
       const response = await window.fetch(
         this.url + "/words?word=" + encodeURIComponent(word) + "&page=" + encodeURIComponent(page))
@@ -20,11 +18,11 @@ class CrosswordServer {
       return Promise.reject(error)
     }
   }
-  async attemptSolve(crossword, timeout) {
+  async attemptSolve(crossword: string, timeout: number | undefined) {
     try {
       let url = this.url + "/solve?crossword=" + encodeURIComponent(crossword)
       if (timeout !== undefined) {
-        url += "&timeout=" + parseInt(timeout, 10)
+        url += "&timeout=" + timeout
       } else {
         timeout = 30
       }
@@ -46,5 +44,3 @@ class CrosswordServer {
     }
   }
 }
-
-module.exports = CrosswordServer

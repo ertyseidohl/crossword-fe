@@ -1,0 +1,381 @@
+crossword-fe@0.1.0 /Users/erty/workspace/crossword-fe
+├─┬ @vitejs/plugin-vue@5.2.3
+│ ├── vite@6.3.4 deduped
+│ └── vue@3.5.13 deduped
+├─┬ eslint-plugin-vue@10.1.0
+│ ├─┬ @eslint-community/eslint-utils@4.7.0
+│ │ ├── eslint-visitor-keys@3.4.3
+│ │ └── eslint@9.26.0 deduped
+│ ├── eslint@9.26.0 deduped
+│ ├── natural-compare@1.4.0
+│ ├─┬ nth-check@2.1.1
+│ │ └── boolbase@1.0.0
+│ ├─┬ postcss-selector-parser@6.1.2
+│ │ ├── cssesc@3.0.0
+│ │ └── util-deprecate@1.0.2
+│ ├── semver@7.7.1
+│ ├─┬ vue-eslint-parser@10.1.3
+│ │ ├── debug@4.4.0 deduped
+│ │ ├── eslint-scope@8.3.0 deduped
+│ │ ├── eslint-visitor-keys@4.2.0 deduped
+│ │ ├── eslint@9.26.0 deduped
+│ │ ├── espree@10.3.0 deduped
+│ │ ├── esquery@1.6.0 deduped
+│ │ ├── lodash@4.17.21
+│ │ └── semver@7.7.1
+│ └── xml-name-validator@4.0.0
+├─┬ eslint@9.26.0
+│ ├── @eslint-community/eslint-utils@4.7.0 deduped
+│ ├── @eslint-community/regexpp@4.12.1
+│ ├─┬ @eslint/config-array@0.20.0
+│ │ ├── @eslint/object-schema@2.1.6
+│ │ ├── debug@4.4.0 deduped
+│ │ └── minimatch@3.1.2 deduped
+│ ├── @eslint/config-helpers@0.2.2
+│ ├─┬ @eslint/core@0.13.0
+│ │ └── @types/json-schema@7.0.15 deduped
+│ ├─┬ @eslint/eslintrc@3.3.1
+│ │ ├── ajv@6.12.6 deduped
+│ │ ├── debug@4.4.0 deduped
+│ │ ├── espree@10.3.0 deduped
+│ │ ├── globals@14.0.0
+│ │ ├── ignore@5.3.2 deduped
+│ │ ├─┬ import-fresh@3.3.1
+│ │ │ ├─┬ parent-module@1.0.1
+│ │ │ │ └── callsites@3.1.0
+│ │ │ └── resolve-from@4.0.0
+│ │ ├─┬ js-yaml@4.1.0
+│ │ │ └── argparse@2.0.1
+│ │ ├── minimatch@3.1.2 deduped
+│ │ └── strip-json-comments@3.1.1
+│ ├── @eslint/js@9.26.0
+│ ├─┬ @eslint/plugin-kit@0.2.8
+│ │ ├── @eslint/core@0.13.0 deduped
+│ │ └─┬ levn@0.4.1
+│ │   ├── prelude-ls@1.2.1 deduped
+│ │   └── type-check@0.4.0 deduped
+│ ├─┬ @humanfs/node@0.16.6
+│ │ ├── @humanfs/core@0.19.1
+│ │ └── @humanwhocodes/retry@0.3.1
+│ ├── @humanwhocodes/module-importer@1.0.1
+│ ├── @humanwhocodes/retry@0.4.2
+│ ├─┬ @modelcontextprotocol/sdk@1.11.0
+│ │ ├── content-type@1.0.5
+│ │ ├─┬ cors@2.8.5
+│ │ │ ├── object-assign@4.1.1
+│ │ │ └── vary@1.1.2
+│ │ ├── cross-spawn@7.0.6 deduped
+│ │ ├─┬ eventsource@3.0.6
+│ │ │ └── eventsource-parser@3.0.1
+│ │ ├─┬ express-rate-limit@7.5.0
+│ │ │ └── express@5.1.0 deduped
+│ │ ├─┬ express@5.1.0
+│ │ │ ├─┬ accepts@2.0.0
+│ │ │ │ ├── mime-types@3.0.1 deduped
+│ │ │ │ └── negotiator@1.0.0
+│ │ │ ├─┬ body-parser@2.2.0
+│ │ │ │ ├── bytes@3.1.2 deduped
+│ │ │ │ ├── content-type@1.0.5 deduped
+│ │ │ │ ├── debug@4.4.0 deduped
+│ │ │ │ ├── http-errors@2.0.0 deduped
+│ │ │ │ ├── iconv-lite@0.6.3 deduped
+│ │ │ │ ├── on-finished@2.4.1 deduped
+│ │ │ │ ├── qs@6.14.0 deduped
+│ │ │ │ ├── raw-body@3.0.0 deduped
+│ │ │ │ └── type-is@2.0.1 deduped
+│ │ │ ├─┬ content-disposition@1.0.0
+│ │ │ │ └── safe-buffer@5.2.1
+│ │ │ ├── content-type@1.0.5 deduped
+│ │ │ ├── cookie-signature@1.2.2
+│ │ │ ├── cookie@0.7.2
+│ │ │ ├── debug@4.4.0 deduped
+│ │ │ ├── encodeurl@2.0.0
+│ │ │ ├── escape-html@1.0.3
+│ │ │ ├── etag@1.8.1
+│ │ │ ├─┬ finalhandler@2.1.0
+│ │ │ │ ├── debug@4.4.0 deduped
+│ │ │ │ ├── encodeurl@2.0.0 deduped
+│ │ │ │ ├── escape-html@1.0.3 deduped
+│ │ │ │ ├── on-finished@2.4.1 deduped
+│ │ │ │ ├── parseurl@1.3.3 deduped
+│ │ │ │ └── statuses@2.0.1 deduped
+│ │ │ ├── fresh@2.0.0
+│ │ │ ├─┬ http-errors@2.0.0
+│ │ │ │ ├── depd@2.0.0
+│ │ │ │ ├── inherits@2.0.4
+│ │ │ │ ├── setprototypeof@1.2.0
+│ │ │ │ ├── statuses@2.0.1 deduped
+│ │ │ │ └── toidentifier@1.0.1
+│ │ │ ├── merge-descriptors@2.0.0
+│ │ │ ├─┬ mime-types@3.0.1
+│ │ │ │ └── mime-db@1.54.0
+│ │ │ ├─┬ on-finished@2.4.1
+│ │ │ │ └── ee-first@1.1.1
+│ │ │ ├─┬ once@1.4.0
+│ │ │ │ └── wrappy@1.0.2
+│ │ │ ├── parseurl@1.3.3
+│ │ │ ├─┬ proxy-addr@2.0.7
+│ │ │ │ ├── forwarded@0.2.0
+│ │ │ │ └── ipaddr.js@1.9.1
+│ │ │ ├─┬ qs@6.14.0
+│ │ │ │ └─┬ side-channel@1.1.0
+│ │ │ │   ├── es-errors@1.3.0
+│ │ │ │   ├── object-inspect@1.13.4
+│ │ │ │   ├─┬ side-channel-list@1.0.0
+│ │ │ │   │ ├── es-errors@1.3.0 deduped
+│ │ │ │   │ └── object-inspect@1.13.4 deduped
+│ │ │ │   ├─┬ side-channel-map@1.0.1
+│ │ │ │   │ ├─┬ call-bound@1.0.4
+│ │ │ │   │ │ ├─┬ call-bind-apply-helpers@1.0.2
+│ │ │ │   │ │ │ ├── es-errors@1.3.0 deduped
+│ │ │ │   │ │ │ └── function-bind@1.1.2 deduped
+│ │ │ │   │ │ └── get-intrinsic@1.3.0 deduped
+│ │ │ │   │ ├── es-errors@1.3.0 deduped
+│ │ │ │   │ ├─┬ get-intrinsic@1.3.0
+│ │ │ │   │ │ ├── call-bind-apply-helpers@1.0.2 deduped
+│ │ │ │   │ │ ├── es-define-property@1.0.1
+│ │ │ │   │ │ ├── es-errors@1.3.0 deduped
+│ │ │ │   │ │ ├─┬ es-object-atoms@1.1.1
+│ │ │ │   │ │ │ └── es-errors@1.3.0 deduped
+│ │ │ │   │ │ ├── function-bind@1.1.2
+│ │ │ │   │ │ ├─┬ get-proto@1.0.1
+│ │ │ │   │ │ │ ├─┬ dunder-proto@1.0.1
+│ │ │ │   │ │ │ │ ├── call-bind-apply-helpers@1.0.2 deduped
+│ │ │ │   │ │ │ │ ├── es-errors@1.3.0 deduped
+│ │ │ │   │ │ │ │ └── gopd@1.2.0 deduped
+│ │ │ │   │ │ │ └── es-object-atoms@1.1.1 deduped
+│ │ │ │   │ │ ├── gopd@1.2.0
+│ │ │ │   │ │ ├── has-symbols@1.1.0
+│ │ │ │   │ │ ├─┬ hasown@2.0.2
+│ │ │ │   │ │ │ └── function-bind@1.1.2 deduped
+│ │ │ │   │ │ └── math-intrinsics@1.1.0
+│ │ │ │   │ └── object-inspect@1.13.4 deduped
+│ │ │ │   └─┬ side-channel-weakmap@1.0.2
+│ │ │ │     ├── call-bound@1.0.4 deduped
+│ │ │ │     ├── es-errors@1.3.0 deduped
+│ │ │ │     ├── get-intrinsic@1.3.0 deduped
+│ │ │ │     ├── object-inspect@1.13.4 deduped
+│ │ │ │     └── side-channel-map@1.0.1 deduped
+│ │ │ ├── range-parser@1.2.1
+│ │ │ ├─┬ router@2.2.0
+│ │ │ │ ├── debug@4.4.0 deduped
+│ │ │ │ ├── depd@2.0.0 deduped
+│ │ │ │ ├── is-promise@4.0.0
+│ │ │ │ ├── parseurl@1.3.3 deduped
+│ │ │ │ └── path-to-regexp@8.2.0
+│ │ │ ├─┬ send@1.2.0
+│ │ │ │ ├── debug@4.4.0 deduped
+│ │ │ │ ├── encodeurl@2.0.0 deduped
+│ │ │ │ ├── escape-html@1.0.3 deduped
+│ │ │ │ ├── etag@1.8.1 deduped
+│ │ │ │ ├── fresh@2.0.0 deduped
+│ │ │ │ ├── http-errors@2.0.0 deduped
+│ │ │ │ ├── mime-types@3.0.1 deduped
+│ │ │ │ ├── ms@2.1.3 deduped
+│ │ │ │ ├── on-finished@2.4.1 deduped
+│ │ │ │ ├── range-parser@1.2.1 deduped
+│ │ │ │ └── statuses@2.0.1 deduped
+│ │ │ ├─┬ serve-static@2.2.0
+│ │ │ │ ├── encodeurl@2.0.0 deduped
+│ │ │ │ ├── escape-html@1.0.3 deduped
+│ │ │ │ ├── parseurl@1.3.3 deduped
+│ │ │ │ └── send@1.2.0 deduped
+│ │ │ ├── statuses@2.0.1
+│ │ │ ├─┬ type-is@2.0.1
+│ │ │ │ ├── content-type@1.0.5 deduped
+│ │ │ │ ├── media-typer@1.1.0
+│ │ │ │ └── mime-types@3.0.1 deduped
+│ │ │ └── vary@1.1.2 deduped
+│ │ ├── pkce-challenge@5.0.0
+│ │ ├─┬ raw-body@3.0.0
+│ │ │ ├── bytes@3.1.2
+│ │ │ ├── http-errors@2.0.0 deduped
+│ │ │ ├─┬ iconv-lite@0.6.3
+│ │ │ │ └── safer-buffer@2.1.2
+│ │ │ └── unpipe@1.0.0
+│ │ ├─┬ zod-to-json-schema@3.24.5
+│ │ │ └── zod@3.24.4 deduped
+│ │ └── zod@3.24.4 deduped
+│ ├── @types/estree@1.0.7
+│ ├── @types/json-schema@7.0.15
+│ ├─┬ ajv@6.12.6
+│ │ ├── fast-deep-equal@3.1.3 deduped
+│ │ ├── fast-json-stable-stringify@2.1.0
+│ │ ├── json-schema-traverse@0.4.1
+│ │ └─┬ uri-js@4.4.1
+│ │   └── punycode@2.3.1
+│ ├─┬ chalk@4.1.2
+│ │ ├─┬ ansi-styles@4.3.0
+│ │ │ └─┬ color-convert@2.0.1
+│ │ │   └── color-name@1.1.4
+│ │ └─┬ supports-color@7.2.0
+│ │   └── has-flag@4.0.0
+│ ├─┬ cross-spawn@7.0.6
+│ │ ├── path-key@3.1.1
+│ │ ├─┬ shebang-command@2.0.0
+│ │ │ └── shebang-regex@3.0.0
+│ │ └─┬ which@2.0.2
+│ │   └── isexe@2.0.0
+│ ├─┬ debug@4.4.0
+│ │ └── ms@2.1.3
+│ ├── escape-string-regexp@4.0.0
+│ ├─┬ eslint-scope@8.3.0
+│ │ ├─┬ esrecurse@4.3.0
+│ │ │ └── estraverse@5.3.0 deduped
+│ │ └── estraverse@5.3.0
+│ ├── eslint-visitor-keys@4.2.0
+│ ├─┬ espree@10.3.0
+│ │ ├─┬ acorn-jsx@5.3.2
+│ │ │ └── acorn@8.14.1 deduped
+│ │ ├── acorn@8.14.1
+│ │ └── eslint-visitor-keys@4.2.0 deduped
+│ ├─┬ esquery@1.6.0
+│ │ └── estraverse@5.3.0 deduped
+│ ├── esutils@2.0.3
+│ ├── fast-deep-equal@3.1.3
+│ ├─┬ file-entry-cache@8.0.0
+│ │ └─┬ flat-cache@4.0.1
+│ │   ├── flatted@3.3.3
+│ │   └─┬ keyv@4.5.4
+│ │     └── json-buffer@3.0.1
+│ ├─┬ find-up@5.0.0
+│ │ ├─┬ locate-path@6.0.0
+│ │ │ └─┬ p-locate@5.0.0
+│ │ │   └─┬ p-limit@3.1.0
+│ │ │     └── yocto-queue@0.1.0
+│ │ └── path-exists@4.0.0
+│ ├─┬ glob-parent@6.0.2
+│ │ └── is-glob@4.0.3 deduped
+│ ├── ignore@5.3.2
+│ ├── imurmurhash@0.1.4
+│ ├─┬ is-glob@4.0.3
+│ │ └── is-extglob@2.1.1
+│ ├── UNMET OPTIONAL DEPENDENCY jiti@*
+│ ├── json-stable-stringify-without-jsonify@1.0.1
+│ ├── lodash.merge@4.6.2
+│ ├─┬ minimatch@3.1.2
+│ │ └─┬ brace-expansion@1.1.11
+│ │   ├── balanced-match@1.0.2
+│ │   └── concat-map@0.0.1
+│ ├── natural-compare@1.4.0 deduped
+│ ├─┬ optionator@0.9.4
+│ │ ├── deep-is@0.1.4
+│ │ ├── fast-levenshtein@2.0.6
+│ │ ├── levn@0.4.1 deduped
+│ │ ├── prelude-ls@1.2.1
+│ │ ├─┬ type-check@0.4.0
+│ │ │ └── prelude-ls@1.2.1 deduped
+│ │ └── word-wrap@1.2.5
+│ └── zod@3.24.4
+├─┬ vite@6.3.4
+│ ├── UNMET OPTIONAL DEPENDENCY @types/node@^18.0.0 || ^20.0.0 || >=22.0.0
+│ ├─┬ esbuild@0.25.3
+│ │ ├── UNMET OPTIONAL DEPENDENCY @esbuild/aix-ppc64@0.25.3
+│ │ ├── UNMET OPTIONAL DEPENDENCY @esbuild/android-arm@0.25.3
+│ │ ├── UNMET OPTIONAL DEPENDENCY @esbuild/android-arm64@0.25.3
+│ │ ├── UNMET OPTIONAL DEPENDENCY @esbuild/android-x64@0.25.3
+│ │ ├── @esbuild/darwin-arm64@0.25.3
+│ │ ├── UNMET OPTIONAL DEPENDENCY @esbuild/darwin-x64@0.25.3
+│ │ ├── UNMET OPTIONAL DEPENDENCY @esbuild/freebsd-arm64@0.25.3
+│ │ ├── UNMET OPTIONAL DEPENDENCY @esbuild/freebsd-x64@0.25.3
+│ │ ├── UNMET OPTIONAL DEPENDENCY @esbuild/linux-arm@0.25.3
+│ │ ├── UNMET OPTIONAL DEPENDENCY @esbuild/linux-arm64@0.25.3
+│ │ ├── UNMET OPTIONAL DEPENDENCY @esbuild/linux-ia32@0.25.3
+│ │ ├── UNMET OPTIONAL DEPENDENCY @esbuild/linux-loong64@0.25.3
+│ │ ├── UNMET OPTIONAL DEPENDENCY @esbuild/linux-mips64el@0.25.3
+│ │ ├── UNMET OPTIONAL DEPENDENCY @esbuild/linux-ppc64@0.25.3
+│ │ ├── UNMET OPTIONAL DEPENDENCY @esbuild/linux-riscv64@0.25.3
+│ │ ├── UNMET OPTIONAL DEPENDENCY @esbuild/linux-s390x@0.25.3
+│ │ ├── UNMET OPTIONAL DEPENDENCY @esbuild/linux-x64@0.25.3
+│ │ ├── UNMET OPTIONAL DEPENDENCY @esbuild/netbsd-arm64@0.25.3
+│ │ ├── UNMET OPTIONAL DEPENDENCY @esbuild/netbsd-x64@0.25.3
+│ │ ├── UNMET OPTIONAL DEPENDENCY @esbuild/openbsd-arm64@0.25.3
+│ │ ├── UNMET OPTIONAL DEPENDENCY @esbuild/openbsd-x64@0.25.3
+│ │ ├── UNMET OPTIONAL DEPENDENCY @esbuild/sunos-x64@0.25.3
+│ │ ├── UNMET OPTIONAL DEPENDENCY @esbuild/win32-arm64@0.25.3
+│ │ ├── UNMET OPTIONAL DEPENDENCY @esbuild/win32-ia32@0.25.3
+│ │ └── UNMET OPTIONAL DEPENDENCY @esbuild/win32-x64@0.25.3
+│ ├─┬ fdir@6.4.4
+│ │ └── picomatch@4.0.2 deduped
+│ ├── fsevents@2.3.3
+│ ├── UNMET OPTIONAL DEPENDENCY jiti@>=1.21.0
+│ ├── UNMET OPTIONAL DEPENDENCY less@*
+│ ├── UNMET OPTIONAL DEPENDENCY lightningcss@^1.21.0
+│ ├── picomatch@4.0.2
+│ ├─┬ postcss@8.5.3
+│ │ ├── nanoid@3.3.11
+│ │ ├── picocolors@1.1.1
+│ │ └── source-map-js@1.2.1
+│ ├─┬ rollup@4.40.1
+│ │ ├── UNMET OPTIONAL DEPENDENCY @rollup/rollup-android-arm-eabi@4.40.1
+│ │ ├── UNMET OPTIONAL DEPENDENCY @rollup/rollup-android-arm64@4.40.1
+│ │ ├── @rollup/rollup-darwin-arm64@4.40.1
+│ │ ├── UNMET OPTIONAL DEPENDENCY @rollup/rollup-darwin-x64@4.40.1
+│ │ ├── UNMET OPTIONAL DEPENDENCY @rollup/rollup-freebsd-arm64@4.40.1
+│ │ ├── UNMET OPTIONAL DEPENDENCY @rollup/rollup-freebsd-x64@4.40.1
+│ │ ├── UNMET OPTIONAL DEPENDENCY @rollup/rollup-linux-arm-gnueabihf@4.40.1
+│ │ ├── UNMET OPTIONAL DEPENDENCY @rollup/rollup-linux-arm-musleabihf@4.40.1
+│ │ ├── UNMET OPTIONAL DEPENDENCY @rollup/rollup-linux-arm64-gnu@4.40.1
+│ │ ├── UNMET OPTIONAL DEPENDENCY @rollup/rollup-linux-arm64-musl@4.40.1
+│ │ ├── UNMET OPTIONAL DEPENDENCY @rollup/rollup-linux-loongarch64-gnu@4.40.1
+│ │ ├── UNMET OPTIONAL DEPENDENCY @rollup/rollup-linux-powerpc64le-gnu@4.40.1
+│ │ ├── UNMET OPTIONAL DEPENDENCY @rollup/rollup-linux-riscv64-gnu@4.40.1
+│ │ ├── UNMET OPTIONAL DEPENDENCY @rollup/rollup-linux-riscv64-musl@4.40.1
+│ │ ├── UNMET OPTIONAL DEPENDENCY @rollup/rollup-linux-s390x-gnu@4.40.1
+│ │ ├── UNMET OPTIONAL DEPENDENCY @rollup/rollup-linux-x64-gnu@4.40.1
+│ │ ├── UNMET OPTIONAL DEPENDENCY @rollup/rollup-linux-x64-musl@4.40.1
+│ │ ├── UNMET OPTIONAL DEPENDENCY @rollup/rollup-win32-arm64-msvc@4.40.1
+│ │ ├── UNMET OPTIONAL DEPENDENCY @rollup/rollup-win32-ia32-msvc@4.40.1
+│ │ ├── UNMET OPTIONAL DEPENDENCY @rollup/rollup-win32-x64-msvc@4.40.1
+│ │ ├── @types/estree@1.0.7 deduped
+│ │ └── fsevents@2.3.3 deduped
+│ ├── UNMET OPTIONAL DEPENDENCY sass-embedded@*
+│ ├── UNMET OPTIONAL DEPENDENCY sass@*
+│ ├── UNMET OPTIONAL DEPENDENCY stylus@*
+│ ├── UNMET OPTIONAL DEPENDENCY sugarss@*
+│ ├── UNMET OPTIONAL DEPENDENCY terser@^5.16.0
+│ ├─┬ tinyglobby@0.2.13
+│ │ ├── fdir@6.4.4 deduped
+│ │ └── picomatch@4.0.2 deduped
+│ ├── UNMET OPTIONAL DEPENDENCY tsx@^4.8.1
+│ └── UNMET OPTIONAL DEPENDENCY yaml@^2.4.2
+└─┬ vue@3.5.13
+  ├─┬ @vue/compiler-dom@3.5.13
+  │ ├─┬ @vue/compiler-core@3.5.13
+  │ │ ├── @babel/parser@7.27.1 deduped
+  │ │ ├── @vue/shared@3.5.13 deduped
+  │ │ ├── entities@4.5.0
+  │ │ ├── estree-walker@2.0.2 deduped
+  │ │ └── source-map-js@1.2.1 deduped
+  │ └── @vue/shared@3.5.13 deduped
+  ├─┬ @vue/compiler-sfc@3.5.13
+  │ ├─┬ @babel/parser@7.27.1
+  │ │ └─┬ @babel/types@7.27.1
+  │ │   ├── @babel/helper-string-parser@7.27.1
+  │ │   └── @babel/helper-validator-identifier@7.27.1
+  │ ├── @vue/compiler-core@3.5.13 deduped
+  │ ├── @vue/compiler-dom@3.5.13 deduped
+  │ ├─┬ @vue/compiler-ssr@3.5.13
+  │ │ ├── @vue/compiler-dom@3.5.13 deduped
+  │ │ └── @vue/shared@3.5.13 deduped
+  │ ├── @vue/shared@3.5.13 deduped
+  │ ├── estree-walker@2.0.2
+  │ ├─┬ magic-string@0.30.17
+  │ │ └── @jridgewell/sourcemap-codec@1.5.0
+  │ ├── postcss@8.5.3 deduped
+  │ └── source-map-js@1.2.1 deduped
+  ├─┬ @vue/runtime-dom@3.5.13
+  │ ├─┬ @vue/reactivity@3.5.13
+  │ │ └── @vue/shared@3.5.13 deduped
+  │ ├─┬ @vue/runtime-core@3.5.13
+  │ │ ├── @vue/reactivity@3.5.13 deduped
+  │ │ └── @vue/shared@3.5.13 deduped
+  │ ├── @vue/shared@3.5.13 deduped
+  │ └── csstype@3.1.3
+  ├─┬ @vue/server-renderer@3.5.13
+  │ ├── @vue/compiler-ssr@3.5.13 deduped
+  │ ├── @vue/shared@3.5.13 deduped
+  │ └── vue@3.5.13 deduped
+  ├── @vue/shared@3.5.13
+  └── UNMET OPTIONAL DEPENDENCY typescript@*
+

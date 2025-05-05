@@ -4,7 +4,7 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import Crossword from "./components/Crossword.vue"
 
 export default {

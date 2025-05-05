@@ -1,13 +1,13 @@
 // From https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/btoa
-function toBinary(string) {
-  const codeUnits = new Uint16Array(string.length)
+function toBinary(str: string) {
+  const codeUnits = new Uint16Array(str.length)
   for (let i = 0; i < codeUnits.length; i++) {
-    codeUnits[i] = string.charCodeAt(i)
+    codeUnits[i] = str.charCodeAt(i)
   }
   return String.fromCharCode(...new Uint8Array(codeUnits.buffer))
 }
 
-function fromBinary(binary) {
+function fromBinary(binary: string) {
   const bytes = new Uint8Array(binary.length)
   for (let i = 0; i < bytes.length; i++) {
     bytes[i] = binary.charCodeAt(i)
@@ -15,16 +15,11 @@ function fromBinary(binary) {
   return String.fromCharCode(...new Uint16Array(bytes.buffer))
 }
 
-function safeBase64Encode(string) {
-  return btoa(toBinary(string))
+export function safeBase64Encode(str: string) {
+  return btoa(toBinary(str))
 }
 
-function safeBase64Decode(string) {
-  return fromBinary(atob(string))
-}
-
-module.exports = {
-  safeBase64Encode,
-  safeBase64Decode,
+export function safeBase64Decode(str: string) {
+  return fromBinary(atob(str))
 }
 
